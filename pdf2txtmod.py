@@ -207,18 +207,19 @@ def main(files=None):
         print(max_x)
         print(min_x)
         print(mid_x)
-        hit_abstract = False
+        # hit_abstract = False
         for row in device.rows:
             l_height = row[4]-row[2]
             l_space = previous[4]-row[2]
             print(previous[3])
-
+            """
             # Only start collecting after hit abstract
             if not hit_abstract:
                 if regex.match(r'abstract{e<1}', str(row[5]), regex.I) is not None:
                     hit_abstract = True
                 else:
                     continue
+            """
 
             if row[0] == pagenumber + 1:
                 lines += column2
