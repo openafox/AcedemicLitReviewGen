@@ -15,13 +15,15 @@ from builtins import (
          filter, map, zip)
 # #######################
 
-import sys, os
+import sys
+import os
 from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfdevice import PDFDevice, TagExtractor
 from pdfminer.pdfpage import PDFPage
-from pdfminer.converter import XMLConverter, HTMLConverter, TextConverter, PDFPageAggregator
+from pdfminer.converter import XMLConverter, HTMLConverter, TextConverter
+from pdfminer.converter import PDFPageAggregator
 from pdfminer.cmapdb import CMapDB
 from pdfminer.layout import LAParams, LTContainer, LTText, LTTextBox, LTImage
 from pdfminer.layout import LTPage, LTTextLine, LTChar, LTAnno, LTFigure
@@ -33,16 +35,17 @@ import matplotlib.pyplot as plt
 
 
 class TextCon(PDFPageAggregator):
-    """ Modified from http://stackoverflow.com/questions/15737806/extract-text-using-pdfminer-and-pypdf2-merges-columns
+    """ Modified from
+    http://stackoverflow.com/questions/15737806/extract-text-using-pdfminer-and-pypdf2-merges-columns
     """
     def __init__(self, rsrcmgr, pageno=1, laparams=None, imagewriter=None,
-            imagename = None):
-        PDFPageAggregator.__init__(self, rsrcmgr, pageno=pageno, laparams=laparams)
+                 imagename=None):
+        PDFPageAggregator.__init__(self, rsrcmgr, pageno=pageno,
+                                   laparams=laparams)
         self.rows = []
         self.page_number = 0
         self.imagewriter = imagewriter
         self.imagename = str(imagename)
-
 
     def receive_layout(self, ltpage):
         def render(item, page_number):
@@ -50,7 +53,8 @@ class TextCon(PDFPageAggregator):
                 for child in item:
                     render(child, page_number)
             elif isinstance(item, LTFigure):
-                # self.outfp.write('<figure name="%s" bbox="%s">\n' % (item.name, bbox2str(item.bbox)))
+                # self.outfp.write('<figure name="%s" bbox="%s">\n' %
+                # (item.name, bbox2str(item.bbox)))
                 for child in item:
                     render(child, page_number)
             elif isinstance(item, LTTextLine):
@@ -60,7 +64,9 @@ class TextCon(PDFPageAggregator):
                         child_str += child.get_text()
                 child_str = ' '.join(child_str.split()).strip()
                 if child_str:
-                    row = (page_number, item.bbox[0], item.bbox[1], item.bbox[2], item.bbox[3], child_str) # bbox == (x1, y1, x2, y2)
+                    row = (page_number, item.bbox[0], item.bbox[1],
+                           item.bbox[2], item.bbox[3], child_str)
+                    # bbox == (x1, y1, x2, y2)
                     self.rows.append(row)
                 for child in item:
                     render(child, page_number)
@@ -72,7 +78,7 @@ class TextCon(PDFPageAggregator):
         render(ltpage, self.page_number)
         self.page_number += 1
         # sort by page number then the reverse of y
-        self.rows = sorted(self.rows, key = lambda x: (x[0], -x[2]))
+        self.rows = sorted(self.rows, key=lambda x: (x[0], -x[2]))
         self.result = ltpage
         return
 
@@ -89,7 +95,6 @@ class TextCon(PDFPageAggregator):
         return
 
 
-
 def get_datafiles():
     """Qt file dialogue widget
     """
@@ -98,13 +103,12 @@ def get_datafiles():
     widget = QtGui.QWidget()
     # Set window title
     widget.setWindowTitle("Hello World!")
-    files = QtGui.QFileDialog.getOpenFileNames(widget,
-                                               'Program to run', '',
-                                               filetypes,
-                                               None,
-                                               QtGui.QFileDialog.DontUseNativeDialog)
-    # Show window
-    #widget.show()
+    files = QtGui.QFileDialog.getOpenFileNames(
+            widget,
+            'Program to run', '',
+            filetypes,
+            None,
+            QtGui.QFileDialog.DontUseNativeDialog)
     app.exit()
     return files
 
@@ -117,7 +121,7 @@ def main():
     # input option
     password = ''
     pagenos = set()
-    #pagenos.update( int(x)-1 for x in v.split(',') )
+    # pagenos.update( int(x)-1 for x in v.split(',') )
     maxpages = 0
     # output option
     rotation = 0
@@ -130,7 +134,7 @@ def main():
     rsrcmgr = PDFResourceManager(caching=caching)
     showpageno = True
 
-    ## Line Agumentation ? Parameters
+    # Line Agumentation ? Parameters
     laparams = LAParams()
     laparams.all_texts = True
     laparams.detect_vertical = True
@@ -138,15 +142,14 @@ def main():
     laparams.char_margin = 2.0  # Letter Spacing
     laparams.line_margin = 0.5  # Line Spacing
     laparams.word_margin = 0.1  # Word spacing
-    laparams.boxes_flow = 0.5  # +-1.0  how much horizontal vs. vertical matters
-    #position maters for line continuation
+    laparams.boxes_flow = 0.5  # +-1.0  how much hor vs. vertical matters
+    # position maters for line continuation
     #
     PDFDocument.debug = debug
     PDFParser.debug = debug
     CMapDB.debug = debug
     PDFPageInterpreter.debug = debug
     #
-
 
     for fname in files:
         fname = str(fname)
@@ -169,12 +172,12 @@ def main():
             page.rotate = (page.rotate+rotation) % 360
             interpreter.process_page(page)
 
-        ### Reoder Data to account for columns
-        #x_data = []
+        # Reoder Data to account for columns
+        # x_data = []
         lines = []
         column2 = []
         pagenumber = 0
-        previous = [0,0,0,0,0,0]
+        previous = [0, 0, 0, 0, 0, 0]
         max_x = max([row[3] for row in device.rows])
         min_x = min([row[1] for row in device.rows])
         mid_x = (max_x - min_x) / 2
@@ -187,39 +190,39 @@ def main():
 
             if row[0] == pagenumber:
                 if int(row[1]) < mid_x:
-                    lines.append(str(row[5])) # row[5].encode('utf8'))
+                    lines.append(str(row[5]))  # row[5].encode('utf8'))
                     previous = row
                     continue
                 if int(row[1]) > mid_x and ((int(previous[1]) < mid_x and
-                                           int(previous[3]) < mid_x)
-                                          or (int(previous[1]) > mid_x and
-                                              int(previous[3]) > mid_x)
-                                          or previous[3] > max_x * 0.9):
+                                             int(previous[3]) < mid_x) or
+                                            (int(previous[1]) > mid_x and
+                                             int(previous[3]) > mid_x) or
+                                            previous[3] > max_x * 0.9):
 
-                    column2.append(str(row[5])) # row[5].encode('utf8'))
+                    column2.append(str(row[5]))  # row[5].encode('utf8'))
                     continue
                 else:
-                    lines.append(str(row[5])) # row[5].encode('utf8'))
+                    lines.append(str(row[5]))  # row[5].encode('utf8'))
                     previous = row
                     continue
         lines += column2
 
         with open(outfile, 'w') as f:
             f.write(' '.join(lines))
-            #x_data.append(row[1])
+            # x_data.append(row[1])
 
     # the histogram of the data
-    #n, bins, patches = plt.hist(x_data, 50)
-    #plt.show()
+    # n, bins, patches = plt.hist(x_data, 50)
+    # plt.show()
 
     device.close()
     print('Done')
     return
 
-if __name__ == '__main__': sys.exit(main())
+if __name__ == '__main__':
+    sys.exit(main())
     # This looks really good
     # http://www.degeneratestate.org/posts/2016/Jun/15/extracting-tabular-data-from-pdfs/
-
 
     # ToDO
     # 1. get rid of header and footer - need to look at html/xml in
