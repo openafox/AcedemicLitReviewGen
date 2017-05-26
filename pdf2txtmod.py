@@ -176,10 +176,9 @@ def main(files=None):
 
         # Reoder Data to account for columns
         # x_data = []
+        # column2 = []
         lines = []
-        column2 = []
         pagenumber = 0
-        previous = [0, 0, 0, 0, 0, 0]
         max_y = max([row[4] for row in device.rows])
 
 
@@ -207,11 +206,12 @@ def main(files=None):
         print(max_x)
         print(min_x)
         print(mid_x)
+
+        rows = [list(row) for row in device.rows]
         # hit_abstract = False
-        for row in device.rows:
+        for i, row in enumerate(rows):
             l_height = row[4]-row[2]
-            l_space = previous[4]-row[2]
-            print(previous[3])
+            l_space = rows[i-1][4]-row[2]
             """
             # Only start collecting after hit abstract
             if not hit_abstract:
@@ -222,35 +222,40 @@ def main(files=None):
             """
 
             if row[0] == pagenumber + 1:
-                lines += column2
-                column2 = []
                 pagenumber += 1
 
             if row[0] == pagenumber:
                 if int(row[1]) < mid_x:
+                    rows[i].append(1)
                     lines.append(str(row[5]))  # row[5].encode('utf8'))
                     print(1, str(row[5]))
                 elif int(row[1]) > mid_x and (
-                        (int(previous[1]) < mid_x and
-                         int(previous[3]) < mid_x) or
-                        (int(previous[1]) > mid_x and
-                         int(previous[3]) > mid_x) or
-                        previous[3] > max_x * 0.9 or
+                        (int(rows[i-1][1]) < mid_x and
+                         int(rows[i-1][3]) < mid_x) or
+                        (int(rows[i-1][1]) > mid_x and
+                         int(rows[i-1][3]) > mid_x) or
+                        rows[i-1][3] > max_x * 0.9 or
                         l_space > 2 * l_height):
                     """
                         r_space > c_space or
                         previous[3] > max_x * 0.9 or
                         l_space > 2 * l_height):"""
 
-                    column2.append(str(row[5]))  # row[5].encode('utf8'))
+                    rows[i].append(2)
+                    # column2.append(str(row[5]))  # row[5].encode('utf8'))
                     print(2, str(row[5]))
                 else:
-                    lines.append(str(row[5]))  # row[5].encode('utf8'))
-                    previous = row
+                    rows[i].append(3)
+                    # lines.append(str(row[5]))  # row[5].encode('utf8'))
+                    # previous = row
                     print(3, str(row[5]))
 
-                previous = row
-        lines += column2
+                # previous = row
+        for page in range(pagenumber + 1):
+            lines += ([str(row[5]) for row in rows
+                       if row[0] == page and row[6] <> 2] +
+                      [str(row[5]) for row in rows
+                       if row[0] == page and row[6] == 2])
 
         with open(outfile, 'w') as f:
             f.write(' '.join(lines))
@@ -264,15 +269,20 @@ def main(files=None):
     print('Done')
     return
 
+
+def remove_head_foot(lines):
+    pass
+
+
 if __name__ == '__main__':
     # sys.exit(main())
     exfiles = os.path.abspath(os.path.join(os.path.dirname( __file__ ),
                                            'examplefiles'))
-    afile = 'Yueqiu et al_2012_Large piezoelectric response of Bi sub0.pdf'
-    #afile = 'Yu et al_2007_The synthesis of lead-free ferroelectric Bisub0.pdf'
+    #afile = 'Yueqiu et al_2012_Large piezoelectric response of Bi sub0.pdf'
+    afile = 'Yu et al_2007_The synthesis of lead-free ferroelectric Bisub0.pdf'
     files = [os.path.join(exfiles, afile)]
-    #main(files)
-    main()
+    main(files)
+    #main()
     # This looks really good
     # http://www.degeneratestate.org/posts/2016/Jun/15/extracting-tabular-data-from-pdfs/
 
