@@ -114,8 +114,9 @@ def get_datafiles():
 
 
 # main
-def main():
-    files = get_datafiles()
+def main(files=None):
+    if files is None:
+        files = get_datafiles()
     # debug option level
     debug = 0
     # input option
@@ -178,11 +179,38 @@ def main():
         column2 = []
         pagenumber = 0
         previous = [0, 0, 0, 0, 0, 0]
-        max_x = max([row[3] for row in device.rows])
-        min_x = min([row[1] for row in device.rows])
-        mid_x = (max_x - min_x) / 2
+        max_y = max([row[4] for row in device.rows])
 
+
+        min_y = min([row[2] for row in device.rows])
+        # max_x = max([int(row[3]) for row in device.rows])
+        # min_x = min([int(row[1]) for row in device.rows])
+        # Get max and min the hard way because of stupid headers
+        list_0 = [int(row[3]) for row in device.rows]
+        list_1 = []
+        [list_1.append(obj) for obj in list_0
+                if obj not in list_1 and list_0.count(obj) > 10]
+        max_x = max(list_1)
+
+        list_0 = [int(row[1]) for row in device.rows]
+        list_1 = []
+        [list_1.append(obj) for obj in list_0
+                if obj not in list_1 and list_0.count(obj) > 10]
+        min_x = min(list_1)
+        # Errors if more pics on one side then other
+        # mid_x = (sum([(float(row[1]) + float(row[3]))/2 for row in
+        #    device.rows])/len(device.rows))
+        mid_x = (max_x + min_x)/2
+        # mid_x = 595/2  # center of A4 at 72px/in Letter would be 612/2
+
+        print(max_x)
+        print(min_x)
+        print(mid_x)
         for row in device.rows:
+            l_height = row[4]-row[2]
+            l_space = previous[4]-row[2]
+            print(previous[3])
+
             if row[0] == pagenumber + 1:
                 lines += column2
                 column2 = []
@@ -191,20 +219,27 @@ def main():
             if row[0] == pagenumber:
                 if int(row[1]) < mid_x:
                     lines.append(str(row[5]))  # row[5].encode('utf8'))
-                    previous = row
-                    continue
-                if int(row[1]) > mid_x and ((int(previous[1]) < mid_x and
-                                             int(previous[3]) < mid_x) or
-                                            (int(previous[1]) > mid_x and
-                                             int(previous[3]) > mid_x) or
-                                            previous[3] > max_x * 0.9):
+                    print(1, str(row[5]))
+                elif int(row[1]) > mid_x and (
+                        (int(previous[1]) < mid_x and
+                         int(previous[3]) < mid_x) or
+                        (int(previous[1]) > mid_x and
+                         int(previous[3]) > mid_x) or
+                        previous[3] > max_x * 0.9 or
+                        l_space > 2 * l_height):
+                    """
+                        r_space > c_space or
+                        previous[3] > max_x * 0.9 or
+                        l_space > 2 * l_height):"""
 
                     column2.append(str(row[5]))  # row[5].encode('utf8'))
-                    continue
+                    print(2, str(row[5]))
                 else:
                     lines.append(str(row[5]))  # row[5].encode('utf8'))
                     previous = row
-                    continue
+                    print(3, str(row[5]))
+
+                previous = row
         lines += column2
 
         with open(outfile, 'w') as f:
@@ -220,7 +255,14 @@ def main():
     return
 
 if __name__ == '__main__':
-    sys.exit(main())
+    # sys.exit(main())
+    exfiles = os.path.abspath(os.path.join(os.path.dirname( __file__ ),
+                                           'examplefiles'))
+    afile = 'Yueqiu et al_2012_Large piezoelectric response of Bi sub0.pdf'
+    #afile = 'Yu et al_2007_The synthesis of lead-free ferroelectric Bisub0.pdf'
+    files = [os.path.join(exfiles, afile)]
+    #main(files)
+    main()
     # This looks really good
     # http://www.degeneratestate.org/posts/2016/Jun/15/extracting-tabular-data-from-pdfs/
 
