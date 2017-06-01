@@ -190,13 +190,27 @@ def append_csv(data, filename):
 def recursion(querier, regex, reflags):
     querier_2 = set_up_querier()
     Error = None
+    querier_2 = retrieve_arts_from_file('GS_temp', querier_2, False)
+
     for art in querier.articles:
+        print('Retriving from:', art['url_citations'], art['num_citations'])
+        if any(art['url'] in got_arts['cites'] for got_arts in querier_2.articles):
+            print('Already Retrieved')
+            continue
         if art['url_citations'] is None:
             print('no citations')
             continue
         querier_2, Error = get_citations(querier_2, art)
         if Error is not None:
             return querier, Error
+        else:  # Save temp file for restart
+            if os.path.exists('GS_temp.csv'):
+                os.remove('GS_temp.csv')
+            print('Saving Temp')
+            append_csv(["####################"], 'GS_temp')
+            for art in querier_2.articles:
+                write_data(art, 'GS_temp')
+
     return querier_2, Error
 
 
@@ -205,7 +219,6 @@ def get_citations(self, art):
     url_citations = art['url_citations']
     num_citations = int(art['num_citations'])
     url = art['url']
-    print('Retriving from:', url_citations, num_citations)
     num_arts = len(self.articles)
     print('start:', num_arts)
     result = 0 # start with result 0
@@ -213,7 +226,7 @@ def get_citations(self, art):
     while len(self.articles)-num_arts < num_citations:
         # this is a workaround to fetch all the citations, ought to be better integrated at some point
         # get all pages
-        sleep(randint(90,200))
+        sleep(randint(90, 300))  # 1800,3600))
         html = self._get_http_response(url=url_citations+'&start='+str(result),
                                        log_msg='dump of query response HTML',
                                        err_msg='results retrieval failed')
@@ -245,6 +258,37 @@ def make_csv_backup(filename):
         with open(filename + '_backup'+ str(i) +'.csv', 'wb') as f:
             writer = csv.writer(f)
             writer.writerows(reader)
+
+def retrieve_arts_from_file(filename, querier, rm_no_cite=True):
+    try:
+        with open(filename + '.csv', 'rb') as f:
+            reader = csv.reader(f)
+            rows = [row for row in reader]
+    except:
+        print('No file:', filename)
+        return querier
+
+    breaks = []
+    for i, row in enumerate(rows):
+        if "##########" in row[0].decode('utf-8'):
+            breaks.append(i)
+    for row in rows[breaks[-1]+1:]:
+        art = sr.ScholarArticle()
+        art.attrs['cites'] = [None, 'cites', 12]  # add my extra column
+        for key in art.attrs.keys():
+            art[key] = row[art.attrs[key][2]].decode('utf-8')
+            art['url_citation'] = None  # keep from trying to load bib
+
+        if (art['url_citations'] is not None and
+            art['url_citations'] <> ""):
+            querier.add_article(art)
+            # print('added:', art['url'])
+        elif rm_no_cite is False and art['url'] is not None:
+            querier.add_article(art)
+            # print('added2:', art['url'])
+
+    print('loaded:', len(querier.articles))
+    return querier
 
 
 if __name__ == '__main__':
@@ -292,22 +336,8 @@ if __name__ == '__main__':
         elif 'continue' in url:
             cont = True
             querier = set_up_querier()
-            breaks = []
             make_csv_backup(filename)
-            with open(filename + '.csv', 'rb') as f:
-                reader = csv.reader(f)
-                rows = [row for row in reader]
-            for i, row in enumerate(rows):
-                if "##########" in row[0].decode('utf-8'):
-                    breaks.append(i)
-            for row in rows[breaks[-1]+1:]:
-                art = sr.ScholarArticle()
-                for key in art.attrs.keys():
-                    art[key] = row[art.attrs[key][2]].decode('utf-8')
-                if art['url_citations'] is not None:
-                    querier.add_article(art)
-            print('loaded:', len(querier.articles))
-
+            querier = retrieve_arts_from_file(filename, querier)
         # if starting from article url
         else:
             querier = set_up_querier()
