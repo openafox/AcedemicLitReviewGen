@@ -32,7 +32,7 @@ from PyQt4 import QtGui
 
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
-import regex
+import regex as re
 
 
 class TextCon(PDFPageAggregator):
@@ -177,8 +177,6 @@ def main(files=None):
         # Reoder Data to account for columns
         # x_data = []
         max_y = max([row[4] for row in device.rows])
-
-
         min_y = min([row[2] for row in device.rows])
         # max_x = max([int(row[3]) for row in device.rows])
         # min_x = min([int(row[1]) for row in device.rows])
@@ -221,7 +219,7 @@ def main(files=None):
             if row[0] == pagenumber:
                 if int(row[1]) < mid_x:
                     lines.append(row)
-                    print(1, str(row[5]))
+                    # print(1, str(row[5]))
                 elif int(row[1]) > mid_x and (
                         (int(rows[i-1][1]) < mid_x and
                          int(rows[i-1][3]) < mid_x) or
@@ -235,21 +233,34 @@ def main(files=None):
                         l_space > 2 * l_height):"""
 
                     column2.append(row)
-                    print(2, str(row[5]))
+                    # print(2, str(row[5]))
                 else:
                     lines.append(row)
-                    print(3, str(row[5]))
+                    # print(3, str(row[5]))
         # add final column
         lines += column2
 
+        fig_caps = ['\n']
+        head_foot = []
         new_lines = []
         for i, line in enumerate(lines):
             l_height = lines[i][4]-lines[i][2]
             l_space = lines[i-1][4]-lines[i][2]
+            fig = fig_caps[-1]
             print(l_height, l_space, lines[i][2], min_x + max_x * 0.1, str(line[5]))
-            if 10 * l_height > l_space > 2.5 * l_height:
-                if lines[i][2] < min_x + max_x * 0.1:
-                   continue
+
+            if fig_caps[-1] == str(lines[i - 1][5]) and 0 < l_space < 2.5 * l_height:
+                fig_caps.append(str(line[5]))
+                continue
+            elif (max_y-min_y) * 0.95 > l_space > 2.5 * l_height:
+                if re.match(r"^fig", str(line[5]), re.I):
+                    fig_caps.append('\n')
+                    fig_caps.append(str(line[5]))
+                    continue
+                elif lines[i][2] < min_y + max_y * 0.05:
+                    fig_caps.append('\n')
+                    head_foot.append(str(line[5]))
+                    continue
                 else:
                     new_lines.append('\n')
             new_lines.append(str(line[5]))
@@ -257,6 +268,10 @@ def main(files=None):
 
         with open(outfile, 'w') as f:
             f.write(' '.join(new_lines))
+            f.write('\n\nFigures')
+            f.write(' '.join(fig_caps))
+            f.write('\n\nHeaders & Footers')
+            f.write(' '.join(head_foot))
 
     # the histogram of the data
     # n, bins, patches = plt.hist(x_data, 50)
