@@ -176,9 +176,6 @@ def main(files=None):
 
         # Reoder Data to account for columns
         # x_data = []
-        # column2 = []
-        lines = []
-        pagenumber = 0
         max_y = max([row[4] for row in device.rows])
 
 
@@ -207,27 +204,23 @@ def main(files=None):
         print(min_x)
         print(mid_x)
 
+        column2 = []
+        lines = []
+        pagenumber = 0
         rows = [list(row) for row in device.rows]
-        # hit_abstract = False
+
         for i, row in enumerate(rows):
             l_height = row[4]-row[2]
             l_space = rows[i-1][4]-row[2]
-            """
-            # Only start collecting after hit abstract
-            if not hit_abstract:
-                if regex.match(r'abstract{e<1}', str(row[5]), regex.I) is not None:
-                    hit_abstract = True
-                else:
-                    continue
-            """
 
             if row[0] == pagenumber + 1:
+                lines += column2
+                column2 = []
                 pagenumber += 1
 
             if row[0] == pagenumber:
                 if int(row[1]) < mid_x:
-                    rows[i].append(1)
-                    lines.append(str(row[5]))  # row[5].encode('utf8'))
+                    lines.append(row)
                     print(1, str(row[5]))
                 elif int(row[1]) > mid_x and (
                         (int(rows[i-1][1]) < mid_x and
@@ -235,31 +228,35 @@ def main(files=None):
                         (int(rows[i-1][1]) > mid_x and
                          int(rows[i-1][3]) > mid_x) or
                         rows[i-1][3] > max_x * 0.9 or
-                        l_space > 2 * l_height):
+                        l_space > 2.5 * l_height):
                     """
                         r_space > c_space or
                         previous[3] > max_x * 0.9 or
                         l_space > 2 * l_height):"""
 
-                    rows[i].append(2)
-                    # column2.append(str(row[5]))  # row[5].encode('utf8'))
+                    column2.append(row)
                     print(2, str(row[5]))
                 else:
-                    rows[i].append(3)
-                    # lines.append(str(row[5]))  # row[5].encode('utf8'))
-                    # previous = row
+                    lines.append(row)
                     print(3, str(row[5]))
+        # add final column
+        lines += column2
 
-                # previous = row
-        for page in range(pagenumber + 1):
-            lines += ([str(row[5]) for row in rows
-                       if row[0] == page and row[6] <> 2] +
-                      [str(row[5]) for row in rows
-                       if row[0] == page and row[6] == 2])
+        new_lines = []
+        for i, line in enumerate(lines):
+            l_height = lines[i][4]-lines[i][2]
+            l_space = lines[i-1][4]-lines[i][2]
+            print(l_height, l_space, lines[i][2], min_x + max_x * 0.1, str(line[5]))
+            if 10 * l_height > l_space > 2.5 * l_height:
+                if lines[i][2] < min_x + max_x * 0.1:
+                   continue
+                else:
+                    new_lines.append('\n')
+            new_lines.append(str(line[5]))
+
 
         with open(outfile, 'w') as f:
-            f.write(' '.join(lines))
-            # x_data.append(row[1])
+            f.write(' '.join(new_lines))
 
     # the histogram of the data
     # n, bins, patches = plt.hist(x_data, 50)
