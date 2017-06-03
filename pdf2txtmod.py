@@ -266,15 +266,29 @@ def main(files=None):
             l_height = lines[i][4]-lines[i][2]
             l_space = lines[i-1][2]-lines[i][4]
             l_space_below = 0
+            l_space_2below = 0
             if i + 1 < len(lines):
                 l_space_below = lines[i][2] - lines[i+1][4]
+            if i + 2 < len(lines):
+                l_space_2below = lines[i+1][2] - lines[i+2][4]
             fig = fig_caps[-1]
             print(l_height, l_space, lines[i-1][2], lines[i][4], min_x + max_x * 0.1, str(line[5]))
 
             # capture figure captions multi lines
-            if fig_caps[-1] == str(lines[i - 1][5]) and -5 < l_space < 0.5 * l_height:
+            if fig_caps[-1] == str(lines[i - 1][5]) and -10 < l_space < 0.5 * l_height:
                 fig_caps.append(str(line[5]))
                 continue
+            # capture headers (up to two lines)
+            elif (lines[i][2] > max_y * 0.90 and
+                    (l_space_below > 1.0 * l_height or
+                     l_space_2below > 1.0 * l_height)):
+                    headers.append('\n')
+                    headers.append(str(line[5]))
+                    if re.search(r"Corresponding author|^email|^E-mail|^doi|^keywords|^pacs",
+                          str(line[5]).strip(), re.I):
+                        pass
+                    else:
+                        continue
             # capture supporting info
             elif re.search(r"Corresponding author|^email|^E-mail|^doi|^keywords|^pacs",
                           str(line[5]).strip(), re.I):
@@ -282,11 +296,6 @@ def main(files=None):
                 supp_info.append('\n')
                 supp_info.append(str(line[5]))
                 continue
-            # capture headers
-            elif lines[i][2] > max_y * 0.90 and l_space_below > 1.0 * l_height:
-                    headers.append('\n')
-                    headers.append(str(line[5]))
-                    continue
             elif (max_y-min_y) * 0.95 > l_space > 1.0 * l_height:
                 # capture figure captions
                 if re.match(r"^fig", str(line[5]), re.I):
@@ -299,7 +308,9 @@ def main(files=None):
                     continue
                 else:
                     string = str(lines[i - 1][5])
-                    if (string == fig_caps[-1] or string == headers[-1]): # or
+
+                    if (any(string in s for s in fig_caps) or
+                        any(string in s for s in headers)): # or
                         #string == footers[-1] or string == supp_info[-1]):
                         pass
                     else:
