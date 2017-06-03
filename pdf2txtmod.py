@@ -174,20 +174,21 @@ def main(files=None):
             page.rotate = (page.rotate+rotation) % 360
             interpreter.process_page(page)
 
+        rows = [list(row) for row in device.rows]
         # Reoder Data to account for columns
         # x_data = []
-        max_y = max([row[4] for row in device.rows])
-        min_y = min([row[2] for row in device.rows])
+        max_y = max([row[4] for row in rows])
+        min_y = min([row[2] for row in rows])
         # max_x = max([int(row[3]) for row in device.rows])
         # min_x = min([int(row[1]) for row in device.rows])
         # Get max and min the hard way because of stupid headers
-        list_0 = [int(row[3]) for row in device.rows]
+        list_0 = [int(row[3]) for row in rows]
         list_1 = []
         [list_1.append(obj) for obj in list_0
                 if obj not in list_1 and list_0.count(obj) > 10]
         max_x = max(list_1)
 
-        list_0 = [int(row[1]) for row in device.rows]
+        list_0 = [int(row[1]) for row in rows]
         list_1 = []
         [list_1.append(obj) for obj in list_0
                 if obj not in list_1 and list_0.count(obj) > 10]
@@ -197,35 +198,59 @@ def main(files=None):
         #    device.rows])/len(device.rows))
         mid_x = (max_x + min_x)/2
         # mid_x = 595/2  # center of A4 at 72px/in Letter would be 612/2
+        l_height = sum([row[4] - row[2] for row in rows])/len(rows)
 
-        print(max_x)
-        print(min_x)
-        print(mid_x)
+        # print('max_x:', max_x)
+        # print('min_x:', min_x)
+        # print('mid_x:', mid_x)
+        print('l_height:', l_height)
 
         column2 = []
         lines = []
         pagenumber = 0
-        rows = [list(row) for row in device.rows]
+        table_caps = ['\n']
+        table_data = []
+        table = False
 
         for i, row in enumerate(rows):
-            l_height = row[4]-row[2]
+            #l_height = row[4]-row[2]
             l_space = rows[i-1][2]-row[4]
 
+            #print(l_height, l_space, rows[i-1][2], rows[i][4], str(row[5]))
             if row[0] == pagenumber + 1:
                 lines += column2
                 column2 = []
                 pagenumber += 1
 
             if row[0] == pagenumber:
-                if int(row[1]) < mid_x:
-                    if len(lines) > 0:
-                        if int(row[2]) == int(lines[-1][2]):
-                            lines[-1][5] = lines[-1][5] + " " + row[5]
-                        else:
-                            lines.append(row)
+                if (max_y-min_y) * 0.95 > l_space > 0.8 * l_height:
+                    # capture Table (assuming tables will span all columns)
+                    if re.match(r"^table", str(row[5]), re.I):
+                        table = True
+                        table_caps.append(str(row[5]))
+                        table_data.append('\n')
+                        table_data.append(str(row[5]))
+                        table_data.append('\n')
+                        continue
                     else:
-                        lines.append(row)
-                    # print(1, str(row[5]))
+                        table = False
+
+                # capture table captions multi lines
+                elif (table_caps[-1] == str(rows[i - 1][5]) and
+                    -2 * l_height < l_space < 0.5 * l_height):
+                    table_caps[-1] += str(row[5])
+                    table_data[-2] += str(row[5])
+                    continue
+
+                if table:
+                    # capture table data
+                    if int(rows[i-1][2]) == int(rows[i][2]):
+                        table_data[-1] += '\t' + str(row[5])
+                        continue
+                    else:
+                        table_data.append(str(row[5]))
+                        continue
+
                 elif int(row[1]) > mid_x and (
                         (int(rows[i-1][1]) < mid_x and
                          int(rows[i-1][3]) < mid_x) or
@@ -238,8 +263,12 @@ def main(files=None):
                         previous[3] > max_x * 0.9 or
                         l_space > 2 * l_height):"""
                     if len(column2) > 0:
-                        if int(row[2]) == int(column2[-1][2]):
-                            column2[-1][5] = column2[-1][5] + " " + row[5]
+                        if 1 > (row[2] - column2[-1][2]) > -1:
+                            # join if on same line
+                            if int(row[1]) < int(column2[-1][1]):
+                                column2[-1][5] = row[5] + " " + column2[-1][5]
+                            else:
+                                column2[-1][5] = column2[-1][5] + " " + row[5]
                         else:
                             column2.append(row)
                     else:
@@ -247,8 +276,12 @@ def main(files=None):
                     # print(2, str(row[5]))
                 else:
                     if len(lines) > 0:
-                        if int(row[2]) == int(lines[-1][2]):
-                            lines[-1][5] = lines[-1][5] + " " + row[5]
+                        if 1 > (row[2] - lines[-1][2]) > -1:
+                            # join if on same line
+                            if int(row[1]) < int(lines[-1][1]):
+                                lines[-1][5] = row[5] + " " + lines[-1][5]
+                            else:
+                                lines[-1][5] = lines[-1][5] + " " + row[5]
                         else:
                             lines.append(row)
                     else:
@@ -257,14 +290,16 @@ def main(files=None):
         # add final column
         lines += column2
 
-        table_caps = ['\n']
         fig_caps = ['\n']
         headers = ['\n']
         footers = ['\n']
         supp_info = ['\n']
         new_lines = []
+        supp_re = re.compile(r"Corresponding author|Electronic mail|email"
+                "|E-mail|^doi|doi:|^keywords|^pacs|^apc", re.I)
+
         for i, line in enumerate(lines):
-            l_height = lines[i][4]-lines[i][2]
+            #l_height = lines[i][4]-lines[i][2]
             l_space = lines[i-1][2]-lines[i][4]
             l_space_below = 0
             l_space_2below = 0
@@ -273,46 +308,38 @@ def main(files=None):
             if i + 2 < len(lines):
                 l_space_2below = lines[i+1][2] - lines[i+2][4]
             fig = fig_caps[-1]
-            print(l_height, l_space, lines[i-1][2], lines[i][4], min_x + max_x * 0.1, str(line[5]))
+            print(l_space, l_space_below, l_space_2below, lines[i][2], lines[i][4], str(line[5]))
 
             # capture figure captions multi lines
-            if fig_caps[-1] == str(lines[i - 1][5]) and -10 < l_space < 0.5 * l_height:
+            if (fig_caps[-1] == str(lines[i - 1][5]) and
+                -2 * l_height < l_space < 0.5 * l_height):
                 fig_caps.append(str(line[5]))
                 continue
-            # capture table captions multi lines
-            elif table_caps[-1] == str(lines[i - 1][5]) and -10 < l_space < 0.5 * l_height:
-                table_caps.append(str(line[5]))
-                continue
             # capture headers (up to two lines)
-            elif (lines[i][2] > max_y * 0.90 and
-                    (l_space_below > 1.0 * l_height or
-                     l_space_2below > 1.0 * l_height)):
+            if (lines[i][2] > max_y * 0.95 and
+                    (l_space_below > 0.5 * l_height or
+                     l_space_2below > 0.5 * l_height)):
                     headers.append('\n')
                     headers.append(str(line[5]))
-                    if re.search(r"Corresponding author|^email|^E-mail|^doi|^keywords|^pacs",
-                          str(line[5]).strip(), re.I):
-                        pass
+                    if supp_re.search(str(line[5])):
+                        headers.append('\n')
+                        headers.append(str(line[5]))
                     else:
                         continue
             # capture supporting info
-            elif re.search(r"Corresponding author|^email|^E-mail|^doi|^keywords|^pacs",
-                          str(line[5]).strip(), re.I):
+            if supp_re.search(str(line[5])):
                 print(str(line[5]))
                 supp_info.append('\n')
                 supp_info.append(str(line[5]))
                 continue
-            elif (max_y-min_y) * 0.95 > l_space > 1.0 * l_height:
+            if (max_y-min_y) * 0.95 > l_space > 0.5 * l_height:
                 # capture figure captions
                 if re.match(r"^fig", str(line[5]), re.I):
                     fig_caps.append('\n')
                     fig_caps.append(str(line[5]))
                     continue
-                # capture table captions
-                if re.match(r"^table", str(line[5]), re.I):
-                    table_caps.append('\n')
-                    table_caps.append(str(line[5]))
-                    continue
-                elif lines[i][2] < min_y + max_y * 0.02:
+                # capture footers
+                elif lines[i][2] < min_y + max_y * 0.015:
                     footers.append('\n')
                     footers.append(str(line[5]))
                     continue
@@ -333,7 +360,8 @@ def main(files=None):
             f.write('\n\nFigures')
             f.write(' '.join(fig_caps))
             f.write('\n\nTables')
-            f.write(' '.join(table_caps))
+            #f.write(' '.join(table_caps))
+            f.write('\n'.join(table_data))
             f.write('\n\nHeaders')
             f.write(' '.join(headers))
             f.write('\n\nFooters')
@@ -355,11 +383,11 @@ if __name__ == '__main__':
     # sys.exit(main())
     exfiles = os.path.abspath(os.path.join(os.path.dirname( __file__ ),
                                            'examplefiles'))
-    afile = 'Yueqiu et al_2012_Large piezoelectric response of Bi sub0.pdf'
+    #afile = 'Yueqiu et al_2012_Large piezoelectric response of Bi sub0.pdf'
     #afile = 'Yu et al_2007_The synthesis of lead-free ferroelectric Bisub0.pdf'
-    files = [os.path.join(exfiles, afile)]
-    main(files)
-    #main()
+    #files = [os.path.join(exfiles, afile)]
+    #main(files)
+    main()
     # This looks really good
     # http://www.degeneratestate.org/posts/2016/Jun/15/extracting-tabular-data-from-pdfs/
 
