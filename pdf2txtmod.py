@@ -257,6 +257,7 @@ def main(files=None):
         # add final column
         lines += column2
 
+        table_caps = ['\n']
         fig_caps = ['\n']
         headers = ['\n']
         footers = ['\n']
@@ -277,6 +278,10 @@ def main(files=None):
             # capture figure captions multi lines
             if fig_caps[-1] == str(lines[i - 1][5]) and -10 < l_space < 0.5 * l_height:
                 fig_caps.append(str(line[5]))
+                continue
+            # capture table captions multi lines
+            elif table_caps[-1] == str(lines[i - 1][5]) and -10 < l_space < 0.5 * l_height:
+                table_caps.append(str(line[5]))
                 continue
             # capture headers (up to two lines)
             elif (lines[i][2] > max_y * 0.90 and
@@ -302,6 +307,11 @@ def main(files=None):
                     fig_caps.append('\n')
                     fig_caps.append(str(line[5]))
                     continue
+                # capture table captions
+                if re.match(r"^table", str(line[5]), re.I):
+                    table_caps.append('\n')
+                    table_caps.append(str(line[5]))
+                    continue
                 elif lines[i][2] < min_y + max_y * 0.02:
                     footers.append('\n')
                     footers.append(str(line[5]))
@@ -322,6 +332,8 @@ def main(files=None):
             f.write(' '.join(new_lines))
             f.write('\n\nFigures')
             f.write(' '.join(fig_caps))
+            f.write('\n\nTables')
+            f.write(' '.join(table_caps))
             f.write('\n\nHeaders')
             f.write(' '.join(headers))
             f.write('\n\nFooters')
