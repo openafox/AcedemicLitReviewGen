@@ -1,0 +1,6 @@
+# Netscape HTTP Cookie File
+# Cookies for domains related to google.com.
+# This content may be pasted into a cookies.txt file and used by wget
+# Example:  wget -x --load-cookies cookies.txt https://scholar.google.com/
+#
+.scholar.google.com	TRUE	/	FALSE	1559682511	GSP	IN=7e6cc990821af63+41358307866a516b:LD=en:CF=4:NT=1496533373:A=yPQ_dQ:CPTS=1496610511:LM=1496610511:S=VuKh6TloewhTq05I

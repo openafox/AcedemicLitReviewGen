@@ -168,31 +168,54 @@ def main(files=None):
         interpreter = PDFPageInterpreter(rsrcmgr, device)
 
         fp = file(fname, 'rb')
-        for page in PDFPage.get_pages(fp, pagenos,
+        try:
+            for page in PDFPage.get_pages(fp, pagenos,
                                       maxpages=maxpages, password=password,
                                       caching=caching, check_extractable=True):
-            page.rotate = (page.rotate+rotation) % 360
-            interpreter.process_page(page)
+                page.rotate = (page.rotate+rotation) % 360
+                interpreter.process_page(page)
+        except:
+            continue
 
         rows = [list(row) for row in device.rows]
-        # Reoder Data to account for columns
-        # x_data = []
+
+        pages = max([row[0] for row in rows])
         max_y = max([row[4] for row in rows])
         min_y = min([row[2] for row in rows])
-        # max_x = max([int(row[3]) for row in device.rows])
-        # min_x = min([int(row[1]) for row in device.rows])
+
+        list_0 = [int(row[4]) for row in rows]
+        list_1 = []
+        [list_1.append(obj) for obj in list_0
+                if obj not in list_1 and list_0.count(obj) > pages - 1]
+        max_y2 = max(list_1)
+
+        list_0 = [int(row[2]) for row in rows]
+        list_1 = []
+        [list_1.append(obj) for obj in list_0
+                if obj not in list_1 and list_0.count(obj) > pages - 1]
+        min_y2 = min(list_1)
+
+        print('max_ys:', max_y-max_y2)
+        print('min_ys:', min_y-min_y2)
+
         # Get max and min the hard way because of stupid headers
         list_0 = [int(row[3]) for row in rows]
         list_1 = []
         [list_1.append(obj) for obj in list_0
                 if obj not in list_1 and list_0.count(obj) > 10]
-        max_x = max(list_1)
+        if list_1:
+            max_x = max(list_1)
+        else:
+            max_x = max([int(row[3]) for row in device.rows])
 
         list_0 = [int(row[1]) for row in rows]
         list_1 = []
         [list_1.append(obj) for obj in list_0
                 if obj not in list_1 and list_0.count(obj) > 10]
-        min_x = min(list_1)
+        if list_1:
+            min_x = min(list_1)
+        else:
+            min_x = min([int(row[3]) for row in device.rows])
         # Errors if more pics on one side then other
         # mid_x = (sum([(float(row[1]) + float(row[3]))/2 for row in
         #    device.rows])/len(device.rows))
@@ -392,6 +415,6 @@ if __name__ == '__main__':
     # http://www.degeneratestate.org/posts/2016/Jun/15/extracting-tabular-data-from-pdfs/
 
     # ToDO
-    # 1. get rid of header and footer - need to look at html/xml in
-    # pdfminer/converter <- not much help really
+    # 1. get rid of header and footer - currently works ok but some edge cases
+    # have issues - may need to compair pages to get best results
     # 2. seperate citations

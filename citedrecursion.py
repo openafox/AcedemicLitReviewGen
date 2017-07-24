@@ -44,11 +44,11 @@ def sleep(length):
 def get_retrieved_arts(filename):
     retrieved_arts = []
     try:
-        with open(filename + '.csv','r') as dest_f:
+        with open(filename + '.csv','rb') as dest_f:
             data_iter = csv.reader(dest_f)
             retrieved_arts = [data[1] for data in data_iter]
     except:
-        print('no file')
+        print('No File:', filename)
         pass
     return retrieved_arts
 
@@ -126,7 +126,8 @@ def citerecursion(querier, retrieved_arts, regex, reflags, maxdepth,
 def check_write_articles(querier, regex, reflags, filename):
     delete = []
     # add break between  querier sets for restart
-    append_csv(["####################"], filename)
+    append_csv(["####################", "", "", "", "", "", "", "", "", "",],
+               filename)
     for i, art in enumerate(querier.articles):
         if art['url'] is not None:
             if re.search(regex, art['title']+art['excerpt'], reflags) is None:
@@ -150,6 +151,9 @@ def check_write_articles(querier, regex, reflags, filename):
     # get rid of bad apples
     for i in sorted(delete, reverse=True):
         del querier.articles[i]
+    # remove the temp file if it exist
+    if os.path.exists('GS_temp.csv'):
+        os.remove('GS_temp.csv')
     # check if bad response or just out of good articles
     if len(querier.articles) == 0:
         if len(delete) > 0:
@@ -161,6 +165,9 @@ def check_write_articles(querier, regex, reflags, filename):
 
 
 def write_data(art, filename):
+    # hack need to implement in scholar.py
+    if art['cites'] is None:
+        art['cites'] = ""
     #print([item[1] for item in art.attrs.values()])
     items = sorted(list(art.attrs.values()), key=lambda item: item[2])
     # Find largest label length:
@@ -172,8 +179,6 @@ def write_data(art, filename):
             # add to list and get rid on non ASCII chars
         else:
             res.append('')
-    #if art['cites']:
-    #    res.append(art['cites'].encode('utf-8'))
     append_csv(res, filename)
     # Bibtex
     if art.citation_data is not None:
@@ -227,7 +232,7 @@ def get_citations(self, art):
         # this is a workaround to fetch all the citations, ought to be better integrated at some point
         # get all pages
         sleep(randint(90, 300))  # 1800,3600))
-        html = self._get_http_response(url=url_citations+'&start='+str(result),
+        (html, encoding) = self._get_http_response(url=url_citations+'&start='+str(result),
                                        log_msg='dump of query response HTML',
                                        err_msg='results retrieval failed')
         if html is None:
@@ -235,7 +240,7 @@ def get_citations(self, art):
         if "not a robot" in html.decode('utf-8') or "HTTP 503" in html.decode('utf-8'):
             return self, 'blocked'
 
-        self.parse(html)
+        self.parse(html, encoding)
 
         if retrieved == self.articles[-1]['url']:
             return self, 'blocked?'

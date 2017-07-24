@@ -1,0 +1,63 @@
+## Electrical properties
+\sPr\s
+remanent polerization # will match remnant with fuzzy
+Pmax
+C/cm
+C\scm
+C/m
+C\sm
+
+\sd33\s
+piezoelectric coefﬁcient
+pm\sV
+
+\sEc\s
+coercive field
+V/cm
+V\scm
+
+## Substrates
+substrate
+deposited on
+Pt/Ti/SiO2/Si  # with fuzzy will match Pt/TiO2/SiO2/Si
+MgO
+STO
+LNO
+
+## Crystal texture
+orientation
+texture
+
+## Chemicals Precursers
+acetate
+(CH3COO)3
+trihydrate
+Nitrate
+monomethyl ether
+Formamide
+ethanolamine
+propandiol
+Glycerol
+citrate and citric acid
+PVP
+Diethanolamine
+2-ethylhexanoate
+2-methoxyethanol
+isopropoxide
+n-butoxide
+n-propoxide
+nitric acid HNO2
+Water H2O
+ethyl alcohol
+oleic Acid
+propanol
+acetic acid
+ethylene gylcol
+hexane
+acetylacetone
+di-methoxy-dineodeconate
+xylene
+methanol
+buytl alcohol
+acetyacetonate
+ethyl alcohol
