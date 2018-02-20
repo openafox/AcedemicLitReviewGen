@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Bunch of tools to make life easier
+"""Recursive search of Google scholar based on articles that cite an imput
+article. Limited by requiring matching to an input regex.
 """
-# Copyright 2015 Austin Fox
+# Copyright 2018 Austin Fox
 # Program is distributed under the terms of the
 # GNU General Public License see ./License for more information.
 

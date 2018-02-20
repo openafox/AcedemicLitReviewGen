@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""This is my doc string.
-
-Keyword arguments:
-A -- apple
+"""Retrieves data from extracted txt files (files) given a text file (wordfn)
+with '/n' delimited regex to search for in the file.
+Will automatically remove headers (##) and comments (#) from the file.
 """
-# Copyright 2015 Austin Fox
+# Copyright 2018 Austin Fox
 # Program is distributed under the terms of the
 # GNU General Public License see ./License for more information.
 

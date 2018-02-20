@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-"""Bunch of tools to make life easier
+"""Modifications of PDFMiner to make txt extraction from Acedemic publications
+easier
 """
-# Copyright 2017 Austin Fox
+# Copyright 2018 Austin Fox
 # Program is distributed under the terms of the
 # GNU General Public License see ./License for more information.
 
