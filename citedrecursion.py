@@ -47,10 +47,11 @@ def get_retrieved_arts(filename):
     try:
         with open(filename + '.csv','rb') as dest_f:
             data_iter = csv.reader(dest_f)
-            retrieved_arts = [data[1] for data in data_iter]
+            retrieved_arts = [re.sub('https*:\/\/', '', data[1]) for
+                              data in data_iter]
     except:
         print('No File:', filename)
-        pass
+
     return retrieved_arts
 
 
@@ -64,8 +65,8 @@ def set_up_querier():
     scholar.ScholarConf.COOKIE_JAR_FILE = cookiefile
     scholar.ScholarConf.LOG_LEVEL = 4
     scholar.ScholarConf.USER_AGENT = ("Mozilla/5.0 (Macintosh; Intel Mac OS X"
-            "10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/"
-            "58.0.3029.110 Safari/537.36")
+            "10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/"
+            "64.0.3282.140  Safari/537.36")
 
     scholar.ScholarConf.MAX_PAGE_RESULTS = 10
 
@@ -85,7 +86,7 @@ def query_get_art(querier, url, retrieved_arts):
     depth.
     """
     # check if already retrieved before running query
-    if url in retrieved_arts:
+    if re.sub('https*:\/\/', '', url) in retrieved_arts:
         print('Already Retrieved')
         return querier, None
 
@@ -135,7 +136,7 @@ def check_write_articles(querier, regex, reflags, filename):
                 print('Non match:', art['url'])
                 write_data(art, filename + '_nomatch')
                 delete.append(i)
-            elif art['url'] in retrieved_arts:
+            elif re.sub('https*:\/\/', '', art['url']) in retrieved_arts:
                 # write anyway to record articles it cites
                 # remove citation url so on restart wont open
                 print('Already:', art['url'])
@@ -145,7 +146,7 @@ def check_write_articles(querier, regex, reflags, filename):
             else: # good article
                 print('Retrieved:', art['url'])
                 write_data(art, filename)
-                retrieved_arts.append(art['url'])
+                retrieved_arts.append(re.sub('https*:\/\/', '', art['url']))
         else:
             delete.append(i)
 
@@ -327,6 +328,7 @@ if __name__ == '__main__':
             os.remove(filename + '.bib')
 
     retrieved_arts = get_retrieved_arts(filename)
+    #print(retrieved_arts)
 
     for url in urls:
         cont = False
@@ -365,6 +367,4 @@ if __name__ == '__main__':
     # make take multiple inputs
     # Get osu data -> add to scholar done?
     # chage retrieved articles to scholar.articles object
-
-
 
