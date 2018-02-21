@@ -92,7 +92,9 @@ def query_get_art(querier, url, retrieved_arts):
 
     query = sr.SearchScholarQuery()
     query.set_words(url)
-    querier.send_query(query)
+    querier.query=query
+    send_query(querier)
+
     if len(querier.articles) == 0:
         Error = 'no return from query'
     else:
@@ -109,7 +111,8 @@ def citerecursion(querier, retrieved_arts, regex, reflags, maxdepth,
         print('pre len:', len(querier.articles))
         if not cont:
             querier, retrieved_arts, Error = (
-                    check_write_articles(querier, regex, reflags, filename))
+                    check_write_articles(querier, regex, reflags, filename,
+                                         retrieved_arts))
             print('post len:', len(querier.articles))
         cont = False
         depth += 1
@@ -125,7 +128,7 @@ def citerecursion(querier, retrieved_arts, regex, reflags, maxdepth,
     print('Hit Max Depth')
     return retrieved_arts, Error
 
-def check_write_articles(querier, regex, reflags, filename):
+def check_write_articles(querier, regex, reflags, filename, retrieved_arts):
     delete = []
     # add break between  querier sets for restart
     append_csv(["####################", "", "", "", "", "", "", "", "", "",],
@@ -234,15 +237,8 @@ def get_citations(self, art):
         # this is a workaround to fetch all the citations, ought to be better integrated at some point
         # get all pages
         sleep(randint(90, 300))  # 1800,3600))
-        (html, encoding) = self._get_http_response(url=url_citations+'&start='+str(result),
-                                       log_msg='dump of query response HTML',
-                                       err_msg='results retrieval failed')
-        if html is None:
-            return self,  'request error'
-        if "not a robot" in html.decode('utf-8') or "HTTP 503" in html.decode('utf-8'):
-            return self, 'blocked'
 
-        self.parse(html, encoding)
+        send_query(self, url_citations+'&start='+str(result))
 
         if retrieved == self.articles[-1]['url']:
             return self, 'blocked?'
@@ -255,6 +251,32 @@ def get_citations(self, art):
 
     return self, None
 
+def send_query(self, url=None):
+
+        if not url:
+            self.clear_articles()
+            query = self.query
+            url=query.get_url()
+            print(url)
+
+        (html, encoding) = self._get_http_response(url=url,
+                                       log_msg='dump of query response HTML',
+                                       err_msg='results retrieval failed')
+        if html is None:
+            return self,  'request error'
+        if "not a robot" in html.decode('utf-8') or "HTTP 503" in html.decode('utf-8'):
+            return self, 'blocked'
+        if "Sorry, no information" in html.decode('utf-8'):
+            "solve http(s) error - still not sure what causes this"
+            if 'https' in query.words:
+                query.set_words('http' + query.words[5:])
+            else:
+                query.set_words('https' + query.words[4:])
+            querier.query=query
+            send_query(self)
+
+        self.parse(html, encoding)
+
 
 def make_csv_backup(filename):
     i = 1
@@ -266,7 +288,7 @@ def make_csv_backup(filename):
             writer = csv.writer(f)
             writer.writerows(reader)
 
-def retrieve_arts_from_file(filename, querier, rm_no_cite=True):
+def retrieve_arts_from_file(filename, querier, rm_no_cite=True, All=False):
     try:
         with open(filename + '.csv', 'rb') as f:
             reader = csv.reader(f)
@@ -279,26 +301,42 @@ def retrieve_arts_from_file(filename, querier, rm_no_cite=True):
     for i, row in enumerate(rows):
         if "##########" in row[0].decode('utf-8'):
             breaks.append(i)
-    for row in rows[breaks[-1]+1:]:
+    if All:
+        for i in breaks[::-1]:
+            del rows[i]
+        search = rows
+    else:
+        search = rows[breaks[-1]+1:]
+
+    for row in search:
         art = sr.ScholarArticle()
         art.attrs['cites'] = [None, 'cites', 12]  # add my extra column
         for key in art.attrs.keys():
             art[key] = row[art.attrs[key][2]].decode('utf-8')
             art['url_citation'] = None  # keep from trying to load bib
 
-        if (art['url_citations'] is not None and
-            art['url_citations'] <> ""):
-            querier.add_article(art)
-            # print('added:', art['url'])
-        elif rm_no_cite is False and art['url'] is not None:
-            querier.add_article(art)
-            # print('added2:', art['url'])
+        if art['url'] not in [row['url'] for row in querier.articles]:
+            # Don't add if already added
+            if (art['url_citations'] is not None and
+                art['url_citations'] <> ""):
+                querier.add_article(art)
+                # print('added:', art['url'])
+            elif rm_no_cite is False and art['url'] is not None:
+                querier.add_article(art)
+                # print('added2:', art['url'])
 
     print('loaded:', len(querier.articles))
     return querier
 
+def check_for_new(filename):
+    """check if an previous recursion has new citations"""
 
-if __name__ == '__main__':
+    querier = set_up_querier()
+    querier2 = set_up_querier()
+    retrieve_arts_from_file(filename, querier, rm_no_cite=False, All=True)
+
+
+def main():
     # 2 cites deep
     #urls = ["http://www.sciencedirect.com/science/article/pii/S0272884214007160"]
     #PDF and OSU
@@ -368,3 +406,12 @@ if __name__ == '__main__':
     # Get osu data -> add to scholar done?
     # chage retrieved articles to scholar.articles object
 
+if __name__ == '__main__':
+
+    filename = 'test'  # leave off extension writes a csv and a bib
+
+    filename  = os.path.abspath(os.path.join(os.path.dirname( __file__ ),
+                                           'out', filename))
+    check_for_new(filename)
+
+    #main()
