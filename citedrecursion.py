@@ -58,15 +58,16 @@ def get_retrieved_arts(filename):
 def set_up_querier():
     scholar = sr
 
+    # get cookie file from browser - it may be necessary to clear cookies
+    # get user agent by searching 'my user agent'
     cookiefile = os.path.abspath(os.path.join(os.path.dirname( __file__ ),
                                            'cookies.txt'))
     # fix error repace 0 in 5th column with '' and remove decimals
     # http://stackoverflow.com/questions/14742899/using-cookies-txt-file-with-python-requests if os.path.exists(cookiefile):
     scholar.ScholarConf.COOKIE_JAR_FILE = cookiefile
     scholar.ScholarConf.LOG_LEVEL = 4
-    scholar.ScholarConf.USER_AGENT = ("Mozilla/5.0 (Macintosh; Intel Mac OS X"
-            "10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/"
-            "64.0.3282.140  Safari/537.36")
+    scholar.ScholarConf.USER_AGENT = (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:57.0) Gecko/20100101 Firefox/57.0")
 
     scholar.ScholarConf.MAX_PAGE_RESULTS = 10
 
@@ -92,13 +93,11 @@ def query_get_art(querier, url, retrieved_arts):
     query = sr.SearchScholarQuery()
     query.set_words(url)
     querier.query=query
-    send_query(querier)
+    querier, error = send_query(querier)
 
-    if len(querier.articles) == 0:
-        Error = 'no return from query'
-    else:
-        Error = None
-    return querier, Error
+    if len(querier.articles) == 0 and not error:
+        error = 'no return from query'
+    return querier, error
 
 
 def citerecursion(querier, retrieved_arts, regex, reflags, maxdepth,
@@ -111,23 +110,23 @@ def citerecursion(querier, retrieved_arts, regex, reflags, maxdepth,
     while depth < maxdepth:
         print('pre len:', len(querier.articles))
         if not cont:
-            querier, retrieved_arts, Error = (
+            querier, retrieved_arts, error = (
                     check_write_articles(querier, regex, reflags, filename,
                                          retrieved_arts))
             print('post len:', len(querier.articles))
         cont = False
         depth += 1
         if depth < maxdepth:
-            querier, Error = recursion(querier, regex, reflags)
-            if Error is not None:
-                return retrieved_arts, Error
-        if Error is not None:
-            return retrieved_arts, Error
+            querier, error = recursion(querier, regex, reflags)
+            if error is not None:
+                return retrieved_arts, error
+        if error is not None:
+            return retrieved_arts, error
         elif len(querier.articles) == 0:
             print('No more articles to retrieve')
-            return retrieved_arts, Error
+            return retrieved_arts, error
     print('Hit Max Depth')
-    return retrieved_arts, Error
+    return retrieved_arts, error
 
 def check_write_articles(querier, regex, reflags, filename, retrieved_arts):
     delete = []
@@ -200,7 +199,7 @@ def append_csv(data, filename):
 
 def recursion(querier, regex, reflags):
     querier_2 = set_up_querier()
-    Error = None
+    error = None
     querier_2 = retrieve_arts_from_file('GS_temp', querier_2, False)
 
     for art in querier.articles:
@@ -211,9 +210,9 @@ def recursion(querier, regex, reflags):
         if art['url_citations'] is None:
             print('no citations')
             continue
-        querier_2, Error = get_citations(querier_2, art)
-        if Error is not None:
-            return querier, Error
+        querier_2, error = get_citations(querier_2, art)
+        if error is not None:
+            return querier, error
         else:  # Save temp file for restart
             if os.path.exists('GS_temp.csv'):
                 os.remove('GS_temp.csv')
@@ -222,7 +221,7 @@ def recursion(querier, regex, reflags):
             for art in querier_2.articles:
                 write_data(art, 'GS_temp')
 
-    return querier_2, Error
+    return querier_2, error
 
 
 def get_citations(self, art):
@@ -239,8 +238,9 @@ def get_citations(self, art):
         # get all pages
         sleep(randint(90, 300))  # 1800,3600))
 
-        self = send_query(self, url_citations+'&start='+str(result))
-
+        self, error = send_query(self, url_citations+'&start='+str(result))
+        if error:
+            return self, error
         if retrieved == self.articles[-1]['url']:
             return self, 'blocked?'
         retrieved = self.articles[-1]['url']
@@ -250,21 +250,22 @@ def get_citations(self, art):
     for art in self.articles[num_arts:]:
         art['cites'] = url
 
-    return self, None
+    return self, error
 
 def send_query(self, url=None):
-
+    error = None
     if not url:
         self.clear_articles()
         query = self.query
         url=query.get_url()
-        print(url)
+
+    print(url)
 
     (html, encoding) = self._get_http_response(url=url,
                                     log_msg='dump of query response HTML',
                                     err_msg='results retrieval failed')
     if html is None:
-        return self,  'request error'
+        return self, 'request error'
     if "not a robot" in html.decode('utf-8') or "HTTP 503" in html.decode('utf-8'):
         return self, 'blocked'
     if "Sorry, no information" in html.decode('utf-8'):
@@ -277,7 +278,7 @@ def send_query(self, url=None):
         send_query(self)
 
     self.parse(html, encoding)
-    return self
+    return self, error
 
 
 def make_csv_backup(filename):
@@ -338,8 +339,9 @@ def check_for_new(filename):
     retrieve_arts_from_file(filename, querier, rm_no_cite=False, All=True)
     for art in querier.articles:
         print(art['url'])
-        querier_2, Error = query_get_art(querier_2, art['url'], [])
-            print(querier_2.articles[0]['num_citations'], art['num_citations'])
+        querier_2, error = query_get_art(querier_2, art['url'], [])
+        print(error)
+        print(querier_2.articles[0]['num_citations'], art['num_citations'])
         if querier_2.articles[0]['num_citations'] > art['num_citations']:
             print('do the rec')
         else:
@@ -383,7 +385,7 @@ def main():
 
     for url in urls:
         cont = False
-        Error = None
+        error = None
         print('\n' + '#'*30 + '\n')
         print('url:', url)
         #if 'pickle' in url:
@@ -400,17 +402,17 @@ def main():
         # if starting from article url
         else:
             querier = set_up_querier()
-            querier, Error = query_get_art(querier, url, retrieved_arts)
+            querier, error = query_get_art(querier, url, retrieved_arts)
 
         if querier is not None:
             if len(querier.articles) > 0:
-                retrieved_arts, Error = citerecursion(querier, retrieved_arts,
+                retrieved_arts, error = citerecursion(querier, retrieved_arts,
                                                      regex, reflags, maxdepth,
                                                      filename, cont)
         else:
             print('bad query')
             break
-        if Error is not None:
+        if error is not None:
             print(Error)
             break
 
@@ -423,8 +425,7 @@ if __name__ == '__main__':
 
     filename = 'test'  # leave off extension writes a csv and a bib
 
-    filename  = os.path.abspath(os.path.join(os.path.dirname( __file__ ),
-                                           'out', filename))
+    filename  = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 'out', filename))
     check_for_new(filename)
 
     #main()

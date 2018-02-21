@@ -3,4 +3,5 @@
 # This content may be pasted into a cookies.txt file and used by wget
 # Example:  wget -x --load-cookies cookies.txt https://scholar.google.com/
 #
-.scholar.google.com	TRUE	/	FALSE	1575172364	GSP	LM=1512100364:S=ikNTDwCn6_dyqBkc
+.scholar.google.com	TRUE	/	FALSE	1582310745	GSP	LM=1519239745:S=-cz5YctvveLpnn0I
+
