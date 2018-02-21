@@ -82,8 +82,7 @@ def set_up_querier():
 
 
 def query_get_art(querier, url, retrieved_arts):
-    """Takes a url and gets all citing articles that fit search terms upto a max
-    depth.
+    """Takes querier and a url and returns the querier with the article added.
     """
     # check if already retrieved before running query
     if re.sub('https*:\/\/', '', url) in retrieved_arts:
@@ -104,7 +103,9 @@ def query_get_art(querier, url, retrieved_arts):
 
 def citerecursion(querier, retrieved_arts, regex, reflags, maxdepth,
                   filename, cont=False):
-    """ do the thang"""
+    """Takes a querier with a min of one article and
+    gets all citing articles that fit search terms upto a max depth.
+    """
 
     depth = -1
     while depth < maxdepth:
@@ -333,8 +334,19 @@ def check_for_new(filename):
     """check if an previous recursion has new citations"""
 
     querier = set_up_querier()
-    querier2 = set_up_querier()
+    querier_2 = set_up_querier()
     retrieve_arts_from_file(filename, querier, rm_no_cite=False, All=True)
+    for art in querier.articles:
+        print(art['url'])
+        querier_2, Error = query_get_art(querier_2, art['url'], [])
+            print(querier_2.articles[0]['num_citations'], art['num_citations'])
+        if querier_2.articles[0]['num_citations'] > art['num_citations']:
+            print('do the rec')
+        else:
+            print('nothing new')
+        print('\n' + '#'*30 + '\n')
+
+
 
 
 def main():
@@ -372,7 +384,7 @@ def main():
     for url in urls:
         cont = False
         Error = None
-        print('\n###################################################\n')
+        print('\n' + '#'*30 + '\n')
         print('url:', url)
         #if 'pickle' in url:
             #restart a search using saved pickle
