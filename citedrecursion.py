@@ -238,7 +238,7 @@ def get_citations(self, art):
         # get all pages
         sleep(randint(90, 300))  # 1800,3600))
 
-        send_query(self, url_citations+'&start='+str(result))
+        self = send_query(self, url_citations+'&start='+str(result))
 
         if retrieved == self.articles[-1]['url']:
             return self, 'blocked?'
@@ -253,29 +253,30 @@ def get_citations(self, art):
 
 def send_query(self, url=None):
 
-        if not url:
-            self.clear_articles()
-            query = self.query
-            url=query.get_url()
-            print(url)
+    if not url:
+        self.clear_articles()
+        query = self.query
+        url=query.get_url()
+        print(url)
 
-        (html, encoding) = self._get_http_response(url=url,
-                                       log_msg='dump of query response HTML',
-                                       err_msg='results retrieval failed')
-        if html is None:
-            return self,  'request error'
-        if "not a robot" in html.decode('utf-8') or "HTTP 503" in html.decode('utf-8'):
-            return self, 'blocked'
-        if "Sorry, no information" in html.decode('utf-8'):
-            "solve http(s) error - still not sure what causes this"
-            if 'https' in query.words:
-                query.set_words('http' + query.words[5:])
-            else:
-                query.set_words('https' + query.words[4:])
-            querier.query=query
-            send_query(self)
+    (html, encoding) = self._get_http_response(url=url,
+                                    log_msg='dump of query response HTML',
+                                    err_msg='results retrieval failed')
+    if html is None:
+        return self,  'request error'
+    if "not a robot" in html.decode('utf-8') or "HTTP 503" in html.decode('utf-8'):
+        return self, 'blocked'
+    if "Sorry, no information" in html.decode('utf-8'):
+        "solve http(s) error - still not sure what causes this"
+        if 'https' in query.words:
+            query.set_words('http' + query.words[5:])
+        else:
+            query.set_words('https' + query.words[4:])
+        querier.query=query
+        send_query(self)
 
-        self.parse(html, encoding)
+    self.parse(html, encoding)
+    return self
 
 
 def make_csv_backup(filename):
