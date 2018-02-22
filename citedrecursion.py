@@ -276,8 +276,8 @@ def send_query(self, url=None):
         query = self.query
         url=query.get_url()
 
-    print(self.cjar)
-    print(url)
+    # print(self.cjar)
+    # print(url)
 
     (html, encoding) = self._get_http_response(url=url,
                                     log_msg='dump of query response HTML',
@@ -373,17 +373,19 @@ def check_for_new(filename, regex, reflags, maxdepth):
         print(art['url'])
 
         querier_a, error = query_get_art(querier_a, art['url'], [])
-        print('error?', error, 'citers new:',
-              querier_a.articles[0]['num_citations'], 'citers old:',
+        print('error?', error, '|', 'citers new:',
+              querier_a.articles[0]['num_citations'], '|', 'citers old:',
               art['num_citations'])
 
         #set up for extraction - trick into only grabbing new
         # get sorted from the last year newist first
-        art['url_citations'] += '&scipsc=&q=&scisbd=1'
+        querier_a.articles[0]['url_citations'] += '&scipsc=&q=&scisbd=1'
         # make number the diff
-        querier_a.articles[0]['num_citations'] = (querier_a.articles[0]['num_citations'] -
-                                art['num_citations'])
-        num = querier_a.articles[0]['num_citations']
+        querier_a.articles[0]['num_citations'] = (
+                int(querier_a.articles[0]['num_citations']) -
+                int(art['num_citations']))
+
+        num = int(querier_a.articles[0]['num_citations'])
         if num < 0:
             print('weird lost citations?', art['num_citations'])
             continue
@@ -409,10 +411,13 @@ def check_for_new(filename, regex, reflags, maxdepth):
                 # only keep proper number on citers
                 # querier_a.articles = querier_a.articles[0:num+1]
                 # better to compair to list of original
+                print('pre2 len:', len(querier_a.articles))
                 for i, art in enumerate(querier_a.articles):
                     if (re.sub('https*:\/\/', '', art['url']) in
-                        [row['url'] for row in querier.articles]):
+                        [re.sub('https*:\/\/', '', row['url']) for
+                        row in querier.articles]):
                         del querier_a.articles[i]
+                print('post2 len:', len(querier_a.articles))
                 # check if meets re terms and has not been retrieved
                 querier_a, retrieved_arts, error = (
                         check_write_articles(querier_a, regex, reflags,
@@ -421,7 +426,7 @@ def check_for_new(filename, regex, reflags, maxdepth):
             cont = False
             depth += 1
             if depth < maxdepth:
-                querier_a, error = recursion(querier_a, regex, reflags)
+                querier_a, error = recursion(querier_a)
                 if error is not None:
                     return retrieved_arts, error
             if error is not None:  # extra?
