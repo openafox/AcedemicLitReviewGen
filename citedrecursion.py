@@ -62,9 +62,10 @@ def set_up_querier():
     # get user agent by searching 'my user agent'
     cookiefile = os.path.abspath(os.path.join(os.path.dirname( __file__ ),
                                            'cookies.txt'))
-    # fix error repace 0 in 5th column with '' and remove decimals
-    # http://stackoverflow.com/questions/14742899/using-cookies-txt-file-with-python-requests if os.path.exists(cookiefile):
-    scholar.ScholarConf.COOKIE_JAR_FILE = cookiefile
+    # fix error - 5th column remove decimals or replace 0 in with ''
+    # http://stackoverflow.com/questions/14742899/using-cookies-txt-file-with-python-requests
+    if os.path.exists(cookiefile):
+        scholar.ScholarConf.COOKIE_JAR_FILE = cookiefile
     scholar.ScholarConf.LOG_LEVEL = 4
     scholar.ScholarConf.USER_AGENT = (
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:57.0) Gecko/20100101 Firefox/57.0")
@@ -102,14 +103,17 @@ def query_get_art(querier, url, retrieved_arts):
 
 def citerecursion(querier, retrieved_arts, regex, reflags, maxdepth,
                   filename, cont=False):
-    """Takes a querier with a min of one article and
-    gets all citing articles that fit search terms upto a max depth.
+    """Takes a querier with a min of one article, a regex, reflags, and
+    gets all citing articles that fit the re terms upto a max depth.
+    setting cont=True assumes last run did not finish - skips check against
+    retrieved_arts and re terms
     """
 
     depth = -1
     while depth < maxdepth:
         print('pre len:', len(querier.articles))
         if not cont:
+            # remove arts already retrieved or that don't fit re terms
             querier, retrieved_arts, error = (
                     check_write_articles(querier, regex, reflags, filename,
                                          retrieved_arts))
@@ -117,10 +121,10 @@ def citerecursion(querier, retrieved_arts, regex, reflags, maxdepth,
         cont = False
         depth += 1
         if depth < maxdepth:
-            querier, error = recursion(querier, regex, reflags)
+            querier, error = recursion(querier)
             if error is not None:
                 return retrieved_arts, error
-        if error is not None:
+        if error is not None:  #extra?
             return retrieved_arts, error
         elif len(querier.articles) == 0:
             print('No more articles to retrieve')
@@ -129,10 +133,12 @@ def citerecursion(querier, retrieved_arts, regex, reflags, maxdepth,
     return retrieved_arts, error
 
 def check_write_articles(querier, regex, reflags, filename, retrieved_arts):
-    delete = []
+    """Check all art in querier against retrieved_arts and re terms. If good
+    write to filename. Else write to filename_nomatch.
+    """
+    delete = []  # for removal of bad apples
     # add break between  querier sets for restart
-    append_csv(["####################", "", "", "", "", "", "", "", "", "",],
-               filename)
+    append_csv(["#"*20] + ['']*11, filename)
     for i, art in enumerate(querier.articles):
         if art['url'] is not None:
             if re.search(regex, art['title']+art['excerpt'], reflags) is None:
@@ -140,10 +146,10 @@ def check_write_articles(querier, regex, reflags, filename, retrieved_arts):
                 write_data(art, filename + '_nomatch')
                 delete.append(i)
             elif re.sub('https*:\/\/', '', art['url']) in retrieved_arts:
-                # write anyway to record articles it cites
-                # remove citation url so on restart wont open
+                # write already retrieved anyway to record articles it cites
                 print('Already:', art['url'])
                 art['url_citations'] = ""
+                # remove citation url so on restart wont open
                 write_data(art, filename)
                 delete.append(i)
             else: # good article
@@ -153,10 +159,10 @@ def check_write_articles(querier, regex, reflags, filename, retrieved_arts):
         else:
             delete.append(i)
 
-    # get rid of bad apples
+    # get rid of bad apples in querier
     for i in sorted(delete, reverse=True):
         del querier.articles[i]
-    # remove the temp file if it exist
+    # remove the temp file if it exist all are now saved to filename
     if os.path.exists('GS_temp.csv'):
         os.remove('GS_temp.csv')
     # check if bad response or just out of good articles
@@ -170,12 +176,12 @@ def check_write_articles(querier, regex, reflags, filename, retrieved_arts):
 
 
 def write_data(art, filename):
+    """Write art data to filename"""
     # hack need to implement in scholar.py
     if art['cites'] is None:
         art['cites'] = ""
-    #print([item[1] for item in art.attrs.values()])
+    # get retrieved data in a sorted list from dic
     items = sorted(list(art.attrs.values()), key=lambda item: item[2])
-    # Find largest label length:
     res = []
     for item in items:
         if item[0] is not None:
@@ -192,19 +198,24 @@ def write_data(art, filename):
 
 
 def append_csv(data, filename):
+    "Append data to filename.csv"""
     with open(filename + '.csv', 'ab') as f:
         writer = csv.writer(f)
         writer.writerow(data)
 
 
-def recursion(querier, regex, reflags):
+def recursion(querier):
+    """Retrieve all artcles citing arts in querier.
+    returns new (querier, error) containing all citing (new) articles"""
     querier_2 = set_up_querier()
     error = None
     querier_2 = retrieve_arts_from_file('GS_temp', querier_2, False)
 
     for art in querier.articles:
         print('Retriving from:', art['url_citations'], art['num_citations'])
+
         if any(art['url'] in got_arts['cites'] for got_arts in querier_2.articles):
+            # check if art was retrieved and all citing articles were saved
             print('Already Retrieved')
             continue
         if art['url_citations'] is None:
@@ -212,12 +223,14 @@ def recursion(querier, regex, reflags):
             continue
         querier_2, error = get_citations(querier_2, art)
         if error is not None:
+            # if didn't finish retriving from art
+            #(add another temp here? could be helpful for lots of cites
             return querier, error
-        else:  # Save temp file for restart
+        else:  # Save temp file for restart - allows skiping arts in querier
             if os.path.exists('GS_temp.csv'):
                 os.remove('GS_temp.csv')
             print('Saving Temp')
-            append_csv(["####################"], 'GS_temp')
+            append_csv(["#"*20] + ['']*11, 'GS_temp')
             for art in querier_2.articles:
                 write_data(art, 'GS_temp')
 
@@ -225,7 +238,8 @@ def recursion(querier, regex, reflags):
 
 
 def get_citations(self, art):
-    """ here self is a querier object"""
+    """Retrieve all articles citing art.
+    self is a querier object"""
     url_citations = art['url_citations']
     num_citations = int(art['num_citations'])
     url = art['url']
@@ -253,12 +267,16 @@ def get_citations(self, art):
     return self, error
 
 def send_query(self, url=None):
+    """Send query to web.
+    self = querier object.
+    With no url specified url will be retrieved from the querier object."""
     error = None
     if not url:
         self.clear_articles()
         query = self.query
         url=query.get_url()
 
+    print(self.cjar)
     print(url)
 
     (html, encoding) = self._get_http_response(url=url,
@@ -282,6 +300,7 @@ def send_query(self, url=None):
 
 
 def make_csv_backup(filename):
+    """Copy an article saved .csv for backup"""
     i = 1
     while os.path.exists(filename + '_backup'+ str(i) +'.csv'):
         i += 1
@@ -292,6 +311,9 @@ def make_csv_backup(filename):
             writer.writerows(reader)
 
 def retrieve_arts_from_file(filename, querier, rm_no_cite=True, All=False):
+    """Build querier object from a file containing art data.
+    rm_no_cite - remove articles without citation url.
+    All - retrieve (True) All non duplicate arts or (False) just last set."""
     try:
         with open(filename + '.csv', 'rb') as f:
             reader = csv.reader(f)
@@ -302,7 +324,7 @@ def retrieve_arts_from_file(filename, querier, rm_no_cite=True, All=False):
 
     breaks = []
     for i, row in enumerate(rows):
-        if "##########" in row[0].decode('utf-8'):
+        if "#"*10 in row[0].decode('utf-8'):
             breaks.append(i)
     if All:
         for i in breaks[::-1]:
@@ -331,27 +353,90 @@ def retrieve_arts_from_file(filename, querier, rm_no_cite=True, All=False):
     print('loaded:', len(querier.articles))
     return querier
 
-def check_for_new(filename):
+def check_for_new(filename, regex, reflags, maxdepth):
     """check if an previous recursion has new citations"""
 
-    querier = set_up_querier()
-    querier_2 = set_up_querier()
-    retrieve_arts_from_file(filename, querier, rm_no_cite=False, All=True)
+    querier = set_up_querier()  # store orriginal
+    querier_a = set_up_querier()  # for new citations
+
+    querier = retrieve_arts_from_file(filename, querier, rm_no_cite=False, All=True)
+
+    filename = filename + '_new'
+    if os.path.exists(filename + '.csv'):
+        retrieved_arts = get_retrieved_arts(filename + '_new.csv')
+    else:
+        retrieved_arts = []  # fresh new check retrieval
+
+    # loop through all original articles
     for art in querier.articles:
-        print(art['url'])
-        querier_2, error = query_get_art(querier_2, art['url'], [])
-        print(error)
-        print(querier_2.articles[0]['num_citations'], art['num_citations'])
-        if querier_2.articles[0]['num_citations'] > art['num_citations']:
-            print('do the rec')
-        else:
-            print('nothing new')
         print('\n' + '#'*30 + '\n')
+        print(art['url'])
 
+        querier_a, error = query_get_art(querier_a, art['url'], [])
+        print('error?', error, 'citers new:',
+              querier_a.articles[0]['num_citations'], 'citers old:',
+              art['num_citations'])
 
+        #set up for extraction - trick into only grabbing new
+        # get sorted from the last year newist first
+        art['url_citations'] += '&scipsc=&q=&scisbd=1'
+        # make number the diff
+        querier_a.articles[0]['num_citations'] = (querier_a.articles[0]['num_citations'] -
+                                art['num_citations'])
+        num = querier_a.articles[0]['num_citations']
+        if num < 0:
+            print('weird lost citations?', art['num_citations'])
+            continue
+        elif num == 0:
+            print('nothing new')
+            # Write art data to new file for continuation ease
+            append_csv(["#"*20] + ['']*11, filename)  # double for
+            append_csv(["#"*20] + ['']*11, filename)  # better delim
+            write_data(art, filename)
+            continue
+
+        # Do Recursion to get new citations
+        cont = True  # Always skip check on first go for new art
+        depth = -1
+        while depth < maxdepth:
+            print('pre len:', len(querier_a.articles))
+            if not cont:
+                if depth == 0:
+                    # Write art data to new file
+                    append_csv(["#"*20] + ['']*11, filename)  # double for
+                    append_csv(["#"*20] + ['']*11, filename)  # better delim
+                    write_data(art, filename)
+                # only keep proper number on citers
+                # querier_a.articles = querier_a.articles[0:num+1]
+                # better to compair to list of original
+                for i, art in enumerate(querier_a.articles):
+                    if (re.sub('https*:\/\/', '', art['url']) in
+                        [row['url'] for row in querier.articles]):
+                        del querier_a.articles[i]
+                # check if meets re terms and has not been retrieved
+                querier_a, retrieved_arts, error = (
+                        check_write_articles(querier_a, regex, reflags,
+                                             filename, retrieved_arts))
+                print('post len:', len(querier_a.articles))
+            cont = False
+            depth += 1
+            if depth < maxdepth:
+                querier_a, error = recursion(querier_a, regex, reflags)
+                if error is not None:
+                    return retrieved_arts, error
+            if error is not None:  # extra?
+                return retrieved_arts, error
+            elif len(querier_a.articles) == 0:
+                print('No more articles to retrieve')
+                return retrieved_arts, error
+        print('Hit Max Depth')
+        return retrieved_arts, error
 
 
 def main():
+    """execute a normal search - should update and make options to run from
+    python, ie make real package."""
+
     # 2 cites deep
     #urls = ["http://www.sciencedirect.com/science/article/pii/S0272884214007160"]
     #PDF and OSU

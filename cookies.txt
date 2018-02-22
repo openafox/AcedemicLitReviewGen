@@ -1,7 +1,5 @@
 # Netscape HTTP Cookie File
-# Cookies for domains related to google.com.
-# This content may be pasted into a cookies.txt file and used by wget
-# Example:  wget -x --load-cookies cookies.txt https://scholar.google.com/
-#
-.scholar.google.com	TRUE	/	FALSE	1582310745	GSP	LM=1519239745:S=-cz5YctvveLpnn0I
+# https://curl.haxx.se/rfc/cookie_spec.html
+# This is a generated file! Do not edit.
 
+.scholar.google.com	TRUE	/	FALSE	1582320444	GSP	IN=41358307866a516b:HIN=7e6cc990821af63:LD=en:CF=4:LM=1519248444:S=FaMreMQZsbY9mxPt
