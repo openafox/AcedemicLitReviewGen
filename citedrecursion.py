@@ -433,7 +433,7 @@ def check_for_new(filename, regex, reflags, maxdepth):
         return retrieved_arts, error
 
 
-def main():
+def main(filename, urls, regex, reflags, maxdepth):
     """execute a normal search - should update and make options to run from
     python, ie make real package."""
 
@@ -444,19 +444,6 @@ def main():
     #url = "http://ieeexplore.ieee.org/abstract/document/7002925/"
     #regex = "[\s\S]*"  # everything
     #"""
-    with open('urls.txt', 'r') as f:
-        content = f.readlines()
-    urls = [url.strip() for url in content]
-    #"""
-    regex = "(?=.*film)(?=.*bi)(?=.*na)"
-    #regex = "film"
-    # | is or,
-    reflags = re.IGNORECASE
-    maxdepth = 20
-    filename = 'test'  # leave off extension writes a csv and a bib
-
-    filename  = os.path.abspath(os.path.join(os.path.dirname( __file__ ),
-                                           'out', filename))
 
     fresh = False
     if fresh:
@@ -509,9 +496,22 @@ def main():
 
 if __name__ == '__main__':
 
-    #filename = 'test'  # leave off extension writes a csv and a bib
+    with open('urls.txt', 'r') as f:
+        content = f.readlines()
+    urls = [url.strip() for url in content]
+    #"""
+    regex = "(?=.*film)(?=.*bi)(?=.*na)"
+    #regex = "film"
+    # | is or,
+    reflags = re.IGNORECASE
+    maxdepth = 20
+    filename = 'test'  # leave off extension writes a csv and a bib
 
-    #filename  = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 'out', filename))
-    #check_for_new(filename)
+    filename  = os.path.abspath(os.path.join(os.path.dirname( __file__ ),
+                                           'out', filename))
+    # Start from already retrieved
+    # (must have only been from past year else will not work)
+    check_for_new(filename, regex, reflags, maxdepth)
 
-    main()
+    # Run citerecursion (will pick up where left off)
+    # main(filename, urls, regex, reflags, maxdepth)
