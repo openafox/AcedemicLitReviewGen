@@ -292,7 +292,7 @@ def send_query(self, url=None):
             query.set_words('http' + query.words[5:])
         else:
             query.set_words('https' + query.words[4:])
-        querier.query=query
+        self.query=query
         send_query(self)
 
     self.parse(html, encoding)
@@ -471,15 +471,16 @@ def main():
     for url in urls:
         cont = False
         error = None
-        print('\n' + '#'*30 + '\n')
-        print('url:', url)
         #if 'pickle' in url:
             #restart a search using saved pickle
         #    with open('CR_querier.pkl', 'rb') as input:
         #        querier = pickle.load(input)
         if '#' in url[0]:
             continue
-        elif 'continue' in url:
+
+        print('\n' + '#'*30 + '\n')
+        print('url:', url)
+        if 'continue' in url:
             cont = True
             querier = set_up_querier()
             make_csv_backup(filename)
@@ -508,9 +509,9 @@ def main():
 
 if __name__ == '__main__':
 
-    filename = 'test'  # leave off extension writes a csv and a bib
+    #filename = 'test'  # leave off extension writes a csv and a bib
 
-    filename  = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 'out', filename))
-    check_for_new(filename)
+    #filename  = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 'out', filename))
+    #check_for_new(filename)
 
-    #main()
+    main()
