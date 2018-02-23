@@ -24,6 +24,7 @@ import re
 import csv
 from random import randint
 import time
+from datetime import datetime
 import scholar as sr
 
 
@@ -70,14 +71,17 @@ def set_up_querier():
     # make the cookie file
     # must be exact or it will block you :( - do the settings that you want
     # then copy the cookie file
+    dt = datetime(2020, 2, 23, 14, 19, 21).strftime('%s')
     with open(cookiefile, 'w') as f:
         f.write('# Netscape HTTP Cookie File\n')
         f.write('.scholar.google.com	TRUE	/	FALSE	'
-                '1582320730	GSP	'
-                'IN=41358307866a516b+e0018ca3a198427c+7e6cc990821af63:'
+                '%s	GSP	'
+                'IN=7e6cc990821af63+e0018ca3a198427c+41358307866a516b:'
                 'LD=en:' # CF=4:'
-                'A=92y2Jg:CPTS=1519353597:'
-                'LM=1519353596:S=tmHUGvExjJFQBadZ')
+                'A=nxuJKA:CPTS=1519424361:'
+                'LM=1519424361:S=2x9Xl6l-4-DhelON'
+                % dt)
+
     scholar.ScholarConf.LOG_LEVEL = 4
     scholar.ScholarConf.USER_AGENT = (
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36")
@@ -234,14 +238,14 @@ def recursion(querier):
     querier_2 = retrieve_arts_from_file('GS_temp', querier_2, False)
 
     for art in querier.articles:
+        if art['url_citations'] is None:
+            print('no citations')
+            continue
         print('Retriving from:', art['url_citations'], art['num_citations'])
 
         if any(art['url'] in got_arts['cites'] for got_arts in querier_2.articles):
             # check if art was retrieved and all citing articles were saved
             print('Already Retrieved')
-            continue
-        if art['url_citations'] is None:
-            print('no citations')
             continue
 
         querier_2, error = get_citations(querier_2, art)
@@ -275,7 +279,7 @@ def get_citations(self, art):
         if num_citations//10 < result//10:
             if 'scisbd' in url_citations:
                 _add_cites(self, url, num_arts)
-                return self, 'Not new, check manually?'
+                return self, 'New Not! Check manually? (trying next page)'
             return self, ('blocked?\nNumber of citations = %d but atempting to'
                           'retrieve page %d') % (num_citations, result)
         # this is a workaround to fetch all the citations, ought to be better integrated at some point
@@ -284,16 +288,18 @@ def get_citations(self, art):
 
         self, error = send_query(self, url_citations+'&start='+str(result))
 
+        if error:
+            return self, error
         if not len(self.articles):
             if 'scisbd' in url_citations:
                 _add_cites(self, url, num_arts)
-                return self, 'Not new, check manually?'
-            return self, 'blocked? Nothing retrieved.'
+                return self, 'New = Not! Check manually? (no arts)'
+            return self, 'Blocked? Nothing retrieved. (no arts)'
         if retrieved == self.articles[-1]['url']:
             if 'scisbd' in url_citations:
                 _add_cites(self, url, num_arts)
-                return self, 'Not new, check manually?'
-            return self, 'blocked? Nothing retrieved.'
+                return self, 'New = Not! Check manually? (nothing retrieved)'
+            return self, 'Blocked? Nothing retrieved.'
         retrieved = self.articles[-1]['url']
         print('retrieved:', len(self.articles)-num_arts)
         print('needed:', num_citations)
@@ -312,6 +318,8 @@ def send_query(self, url=None, http=0):
     """Send query to web.
     self = querier object.
     With no url specified url will be retrieved from the querier object."""
+
+    error = None
     if not url:
         self.clear_articles()
         query = self.query
@@ -335,8 +343,9 @@ def send_query(self, url=None, http=0):
         else:
             self.query.set_words('https' + query.words[4:])
         if http > 0:
-            return self, 'Not! This link no longer works, check manually'
+            return self, 'New Not! This link no longer works, check manually'
         else:
+            sleep(randint(10, 60))
             self, error = send_query(self, http=1)
 
     self.parse(html, encoding)
@@ -403,6 +412,8 @@ def check_for_new(filename, regex, reflags, maxdepth):
     querier = set_up_querier()  # store orriginal
     #querier_a = copy.deepcopy(querier)  # only one request stop being blocked
     querier_a = set_up_querier()  # would be good to get above working
+    # for posible continue
+    querier_b = set_up_querier()
 
     querier = retrieve_arts_from_file(filename, querier, rm_no_cite=False, All=True)
 
@@ -411,6 +422,26 @@ def check_for_new(filename, regex, reflags, maxdepth):
         retrieved_arts = get_retrieved_arts(filename)
     else:
         retrieved_arts = []  # fresh new check retrieval
+
+    # Continue?
+    querier_b = retrieve_arts_from_file(filename, querier_b)
+    if (len(querier_b.articles) > 0 and
+        re.sub('https*:\/\/', '', querier_b.articles[0]['url']) not in
+        [re.sub('https*:\/\/', '', art['url']) for art in querier.articles]):
+        print('Continuing where left off')
+        depth = 1
+        while depth < maxdepth:
+            querier_b, error = recursion(querier_b)
+            if error:
+                print(error)
+                return retrieved_arts, error
+            if len(querier_b.articles) < 1:
+                print('No more articles to retrieve, Continuing')
+                break
+            new_check_write(querier, querier_b, regex, reflags, None,
+                            filename, retrieved_arts, depth)
+            depth += 1
+
 
     # loop through all original articles
     for art in querier.articles:
@@ -421,9 +452,19 @@ def check_for_new(filename, regex, reflags, maxdepth):
             continue
 
         querier_a, error = query_get_art(querier_a, art['url'], [])
+
         if error:
             print(error)
+            if 'New' in error:
+                art['url_citations'] = error
+                new_check_write(querier, querier_a, regex, reflags, art,
+                                filename, retrieved_arts, 0)
+                print('Continuing')
+                continue
             return retrieved_arts, error
+
+        sleep(randint(30, 100)) # may not be needed - not blocked fast
+
 
         # make number the diff
         num = (int(querier_a.articles[0]['num_citations']) -
@@ -440,6 +481,10 @@ def check_for_new(filename, regex, reflags, maxdepth):
 
         if num < 0:
             print('weird lost citations?', num)
+            art['url_citations'] = 'weird lost citations?'
+            new_check_write(querier, querier_a, regex, reflags, art,
+                            filename, retrieved_arts, 0)
+            print('Continuing')
             continue
         elif int(num) == 0:
             print('nothing new')
@@ -468,11 +513,13 @@ def check_for_new(filename, regex, reflags, maxdepth):
                 # Do recursion
                 querier_a, error = recursion(querier_a)
                 if error:
-                    if 'Not' in error:
+                    if 'New' in error:
                         print(error)
+                        print('test')
                         art['url_citations'] = error
                         new_check_write(querier, querier_a, regex, reflags, art,
                                         filename, retrieved_arts, depth)
+                        print('Continuing')
                         break  # move to next article
                     else:
                         print(error)
@@ -482,27 +529,36 @@ def check_for_new(filename, regex, reflags, maxdepth):
                 print(error)
                 return retrieved_arts, error
             elif len(querier_a.articles) < 1:
-                print('No more articles to retrieve')
+                print('No more articles to retrieve, Continuing')
                 break  # move to next article
-        print('Hit Max Depth')
+        if depth >= maxdepth:
+            print('Hit Max Depth')
+        else:
+            print('Continuing')
 
 
-def new_check_write(querier, querier_a, regex, reflags, art,
+def new_check_write(querier, querier_a, regex, reflags, art_0,
                     filename, retrieved_arts, depth):
     """ check write for check_for_new"""
-    if depth == 0:
+    if depth < 1:
         # Write art data to new file
         append_csv(["#"*20] + ['']*11, filename)  # double for
         append_csv(["#"*20] + ['']*11, filename)  # better delim
-        write_data(art, filename)
+        write_data(art_0, filename)
     # only keep proper number on citers
     # querier_a.articles = querier_a.articles[0:num+1]
     # better to compair to list of original
+    delete = []
     for i, art in enumerate(querier_a.articles):
         if (re.sub('https*:\/\/', '', art['url']) in
             [re.sub('https*:\/\/', '', row['url']) for
             row in querier.articles]):
-            del querier_a.articles[i]
+            print('Already:', art['url'])
+            delete.append(i)
+    # get rid of bad apples in querier
+    for i in sorted(delete, reverse=True):
+        del querier_a.articles[i]
+
     print('post2 len:', len(querier_a.articles))
     # check if meets re terms and has not been retrieved
     if len(querier_a.articles) > 0:
