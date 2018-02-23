@@ -252,7 +252,7 @@ def recursion(querier):
         if error is not None:
             # if didn't finish retriving from art
             #(add another temp here? could be helpful for lots of cites
-            return querier, error
+            return querier_2, error
         else:  # Save temp file for restart - allows skiping arts in querier
             if os.path.exists('GS_temp.csv'):
                 os.remove('GS_temp.csv')
@@ -515,7 +515,6 @@ def check_for_new(filename, regex, reflags, maxdepth):
                 if error:
                     if 'New' in error:
                         print(error)
-                        print('test')
                         art['url_citations'] = error
                         new_check_write(querier, querier_a, regex, reflags, art,
                                         filename, retrieved_arts, depth)
@@ -540,6 +539,7 @@ def check_for_new(filename, regex, reflags, maxdepth):
 def new_check_write(querier, querier_a, regex, reflags, art_0,
                     filename, retrieved_arts, depth):
     """ check write for check_for_new"""
+    print('pre2 len:', len(querier_a.articles))
     if depth < 1:
         # Write art data to new file
         append_csv(["#"*20] + ['']*11, filename)  # double for
@@ -557,6 +557,7 @@ def new_check_write(querier, querier_a, regex, reflags, art_0,
             delete.append(i)
     # get rid of bad apples in querier
     for i in sorted(delete, reverse=True):
+        print('deleting', i)
         del querier_a.articles[i]
 
     print('post2 len:', len(querier_a.articles))
