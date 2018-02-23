@@ -1022,6 +1022,8 @@ class ScholarQuerier(object):
             urlargs['scis'] = 'yes'
             urlargs['scisf'] = '&scisf=%d' % settings.citform
 
+        print(urlargs)
+        time.sleep(10)
         (html, encoding) = self._get_http_response(url=self.SET_SETTINGS_URL % urlargs,
                                        log_msg='dump of settings result HTML',
                                        err_msg='applying settings failed')

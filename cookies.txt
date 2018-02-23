@@ -1,5 +1,2 @@
 # Netscape HTTP Cookie File
-# https://curl.haxx.se/rfc/cookie_spec.html
-# This is a generated file! Do not edit.
-
-.scholar.google.com	TRUE	/	FALSE	1582320444	GSP	IN=41358307866a516b:HIN=7e6cc990821af63:LD=en:CF=4:LM=1519248444:S=FaMreMQZsbY9mxPt
+.scholar.google.com	TRUE	/	FALSE	1582320730	GSP	IN=41358307866a516b+e0018ca3a198427c+7e6cc990821af63:LD=en:A=92y2Jg:CPTS=1519353597:LM=1519353596:S=tmHUGvExjJFQBadZ
