@@ -242,7 +242,7 @@ def main(files=None, wordfn=None, save=True):
                         #data.append('New Line')
 
     if save:
-        savepath = os.path.join(os.path.dirname(filename), 'matches.csv')
+        savepath = os.path.join(os.path.dirname(filename), '_matches.csv')
         if not os.path.exists(savepath):
             with open(savepath, 'wb') as f:
                 writer = csv.writer(f)

@@ -504,9 +504,8 @@ def check_for_new(filename, regex, reflags, maxdepth):
         while depth < maxdepth:
             print('pre len:', len(querier_a.articles))
             if not cont:
-                new_check_write(querier, querier_a, regex, reflags, art,
-                                filename, retrieved_arts, depth)
-
+                querier_a = new_check_write(querier, querier_a, regex, reflags,
+                                    art, filename, retrieved_arts, depth)
             cont = False
             depth += 1
             if depth < maxdepth:
@@ -516,17 +515,20 @@ def check_for_new(filename, regex, reflags, maxdepth):
                     if 'New' in error:
                         print(error)
                         art['url_citations'] = error
-                        new_check_write(querier, querier_a, regex, reflags, art,
-                                        filename, retrieved_arts, depth)
-                        print('Continuing')
-                        break  # move to next article
+                        querier_a =  new_check_write(querier, querier_a, regex,
+                                reflags, art, filename, retrieved_arts, depth)
+                        if len(querier_a.articles) < 1:
+                            cont = True # don't repeat check
+                            print('Continuing')
+                            break  # move to next article
                     else:
                         print(error)
                         return retrieved_arts, error
 
             if error:
-                print(error)
-                return retrieved_arts, error
+                if 'New' not in error:
+                    print(error)
+                    return retrieved_arts, error
             elif len(querier_a.articles) < 1:
                 print('No more articles to retrieve, Continuing')
                 break  # move to next article
