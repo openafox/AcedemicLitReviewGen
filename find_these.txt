@@ -1,3 +1,11 @@
+## Bulk Compair / Clamping / TEC
+Bulk
+Stress
+Grain
+Clamp
+Thermal Expansion
+TEC
+
 ## Electrical properties
 \sPr\s
 remanent polerization # will match remnant with fuzzy
@@ -7,14 +15,30 @@ C\scm
 C/m
 C\sm
 
-\sd33\s
-piezoelectric coefﬁcient
-pm\sV
-
 \sEc\s
 coercive field
 V/cm
 V\scm
+
+## D33
+\sd33\s
+piezoelectric coefﬁcient
+pm\sV
+DBLI
+PFM
+interferometer
+
+## Elemental
+XRF
+EPMA
+EDS
+XPS
+spectoscopy
+Elemental
+ICP
+SIMS
+Raman
+NAA
 
 ## Substrates
 substrate

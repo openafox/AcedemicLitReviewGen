@@ -22,41 +22,27 @@ import sys, os
 import numpy as np
 #import re
 import regex as re
-from PyQt4 import QtGui
 import csv
 import time
 
-def get_datafiles(title=None, filetypes=None, multi=True):
+from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog
+
+
+def get_datafiles(supported_datafiles, location):
     """Qt file dialogue widget
     """
-    if filetypes is None:
-        filetypes = 'All(*.*)'
-    else:
-        filetypes = 'Suported (' + filetypes + ')'
-
-    app = QtGui.QApplication(sys.argv)
-    widget = QtGui.QWidget()
-    # Set window title
-    widget.setWindowTitle("Hello World!")
-    notnative = QtGui.QFileDialog.DontUseNativeDialog
-    if multi:
-        if title is None:
-            title = 'Open Files'
-        out = QtGui.QFileDialog.getOpenFileNames(widget,
-                                                 title, '',
-                                                 filetypes,
-                                                 None,
-                                                 notnative)
-        out = [str(f) for f in out]
-    else:
-        out = QtGui.QFileDialog.getOpenFileName(widget,
-                                                title, '',
-                                                filetypes,
-                                                None,
-                                                notnative)
-        out = str(out)
-    app.exit()
-    return out
+    types = ' '.join([row[0] for row in supported_datafiles])
+    filetypes = 'Supported (' + types + ')'
+    app = QApplication(sys.argv)
+    widget = QWidget()
+    files, _ = QFileDialog.getOpenFileNames(
+                        widget,
+                        'Program to run',
+                        location,
+                        filetypes + ';;All files (*.*)',
+                        None,
+                        QFileDialog.DontUseNativeDialog)
+    return files
 
 
 def get_sentance(string, positions):
@@ -157,7 +143,7 @@ def main(files=None, wordfn=None, save=True):
         wordfn = get_datafiles('Keyword File', '*.txt', False)
         print(wordfn)
     if files is None:
-        files = get_datafiles(filetypes='*.txt')
+        files = get_datafiles('*.txt', None)
         print(files)
 
     with open(wordfn, 'r') as f:
@@ -174,7 +160,7 @@ def main(files=None, wordfn=None, save=True):
             if len(temp) > 0:
                 terms.append(temp)
             temp = []
-        elif line[0] <> '#' and line.strip() <> "":  # if not a comment line or header
+        elif line[0] != '#' and line.strip() != "":  # if not a comment line or header
             temp.append(re.sub(re_rmvcmts, "", line).strip())
 
     if len(temp) > 0:
@@ -185,15 +171,15 @@ def main(files=None, wordfn=None, save=True):
     headers[0].append("Pt?")
 
     for f, filename in enumerate(files):
-        with open(filename, 'rb') as fn:
+        with open(filename, 'r') as fn:
             # Read the file contents and generate a list with each line
             string = fn.readlines()
 
-        headers.append([os.path.basename(filename)[:-4].encode('ascii', 'ignore')] +
+        headers.append([os.path.basename(filename)[:-4]] +
                         [""]*(len(headers[0])-1))
         cont = 0
         for line in string:
-            line = line.strip().decode('utf-8')
+            line = line.strip()
             if 'References' in line[0:12]:
                 cont = 1
                 continue
@@ -210,7 +196,7 @@ def main(files=None, wordfn=None, save=True):
                 continue
 
             if 'Table' in line[0:8] and cont == 4:
-                headers[f+1][-2] += line.encode('ascii', 'ignore')+ '\r\n'
+                headers[f+1][-2] += line + '\r\n'
                 continue
 
             if 'Headers' in line[0:10]:
@@ -222,7 +208,7 @@ def main(files=None, wordfn=None, save=True):
                 continue
 
             if cont == 3:
-                headers[f+1][-3] += line.encode('ascii', 'ignore')+ '\r\n'
+                headers[f+1][-3] += line + '\r\n'
                 continue
 
             for i, term in enumerate(terms):
@@ -238,16 +224,16 @@ def main(files=None, wordfn=None, save=True):
                         if "Substrates" in headers[0][i+1]:
                             if "Pt" in sentances[j][2]:
                                 headers[f+1][-1] = 'Yes'
-                        headers[f+1][i+1] += sentances[j][2].encode('ascii', 'ignore') + '\r\n'
+                        headers[f+1][i+1] += sentances[j][2] + '\r\n'
                         #data.append('New Line')
 
     if save:
         savepath = os.path.join(os.path.dirname(filename), '_matches.csv')
         if not os.path.exists(savepath):
-            with open(savepath, 'wb') as f:
+            with open(savepath, 'w') as f:
                 writer = csv.writer(f)
                 writer.writerow(headers[0])
-        with open(savepath, 'ab') as f:
+        with open(savepath, 'a') as f:
             writer = csv.writer(f)
             writer.writerows(headers[1:])
 
