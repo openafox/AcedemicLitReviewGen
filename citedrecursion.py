@@ -71,20 +71,20 @@ def set_up_querier():
     # make the cookie file
     # must be exact or it will block you :( - do the settings that you want
     # then copy the cookie file
-    dt = datetime(2020, 2, 23, 14, 19, 21).strftime('%s')
+    dt = datetime(2020, 3, 8, 9, 48, 53).strftime('%s')
     with open(cookiefile, 'w') as f:
         f.write('# Netscape HTTP Cookie File\n')
         f.write('.scholar.google.com	TRUE	/	FALSE	'
                 '%s	GSP	'
                 'IN=7e6cc990821af63+e0018ca3a198427c+41358307866a516b:'
                 'LD=en:' # CF=4:'
-                'A=nxuJKA:CPTS=1519424361:'
-                'LM=1519424361:S=2x9Xl6l-4-DhelON'
+                'A=6SqDRw:CPTS=1520718128:'
+                'LM=1520718128:S=yreLNDvHLMRUyRUX'
                 % dt)
 
     scholar.ScholarConf.LOG_LEVEL = 4
     scholar.ScholarConf.USER_AGENT = (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36")
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36")
             #"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:57.0) Gecko/20100101 Firefox/57.0")
 
 
@@ -284,7 +284,7 @@ def get_citations(self, art):
                           'retrieve page %d') % (num_citations, result)
         # this is a workaround to fetch all the citations, ought to be better integrated at some point
         # get all pages
-        sleep(randint(90, 300))  # 1800,3600))
+        sleep(randint(100, 500))  # 1800,3600))
 
         self, error = send_query(self, url_citations+'&start='+str(result))
 
@@ -345,7 +345,7 @@ def send_query(self, url=None, http=0):
         if http > 0:
             return self, 'New Not! This link no longer works, check manually'
         else:
-            sleep(randint(10, 60))
+            sleep(randint(60, 300))
             self, error = send_query(self, http=1)
 
     self.parse(html, encoding)
@@ -442,10 +442,10 @@ def check_for_new(filename, regex, reflags, maxdepth):
                             filename, retrieved_arts, depth)
             depth += 1
 
-
+    len_arts = len(querier.articles)
     # loop through all original articles
-    for art in querier.articles:
-        print('\n' + '#'*30 + '\n')
+    for i, art in enumerate(querier.articles):
+        print('\n', i, len_arts, '#'*30, '\n')
         print(art['url'])
         if re.sub('https*:\/\/', '', art['url']) in retrieved_arts:
             print('Already Retrieved')
@@ -463,7 +463,7 @@ def check_for_new(filename, regex, reflags, maxdepth):
                 continue
             return retrieved_arts, error
 
-        sleep(randint(30, 100)) # may not be needed - not blocked fast
+        sleep(randint(200, 800)) # may not be needed - not blocked fast
 
 
         # make number the diff
@@ -518,9 +518,10 @@ def check_for_new(filename, regex, reflags, maxdepth):
                         querier_a =  new_check_write(querier, querier_a, regex,
                                 reflags, art, filename, retrieved_arts, depth)
                         if len(querier_a.articles) < 1:
-                            cont = True # don't repeat check
                             print('Continuing')
                             break  # move to next article
+                        else:
+                            cont = True # don't repeat check
                     else:
                         print(error)
                         return retrieved_arts, error

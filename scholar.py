@@ -761,19 +761,20 @@ class SearchScholarQuery(ScholarQuery):
     configure on the Scholar website, in the advanced search options.
     """
     SCHOLAR_QUERY_URL = ScholarConf.SCHOLAR_SITE + '/scholar?' \
-        + 'as_q=%(words)s' \
-        + '&as_epq=%(phrase)s' \
-        + '&as_oq=%(words_some)s' \
-        + '&as_eq=%(words_none)s' \
-        + '&as_occt=%(scope)s' \
-        + '&as_sauthors=%(authors)s' \
-        + '&as_publication=%(pub)s' \
-        + '&as_ylo=%(ylo)s' \
-        + '&as_yhi=%(yhi)s' \
-        + '&as_vis=%(citations)s' \
+        + 'q=%(words)s' \
         + '&btnG=&hl=en' \
-        + '%(num)s' \
-        + '&as_sdt=%(patents)s%%2C5'
+    #changed from as_q to q
+    #+ '&as_epq=%(phrase)s' \
+    #+ '&as_oq=%(words_some)s' \
+    #+ '&as_eq=%(words_none)s' \
+    #+ '&as_occt=%(scope)s' \
+    #+ '&as_sauthors=%(authors)s' \
+    #+ '&as_publication=%(pub)s' \
+    #+ '&as_ylo=%(ylo)s' \
+    #+ '&as_yhi=%(yhi)s' \
+    #+ '&as_vis=%(citations)s' \
+    #+ '%(num)s' \
+    #+ '&as_sdt=%(patents)s%%2C5'
 
     def __init__(self):
         ScholarQuery.__init__(self)
@@ -856,18 +857,18 @@ class SearchScholarQuery(ScholarQuery):
             words_some = self._parenthesize_phrases(self.words_some)
         if self.words_none:
             words_none = self._parenthesize_phrases(self.words_none)
-
-        urlargs = {'words': self.words or '',
-                   'words_some': words_some or '',
-                   'words_none': words_none or '',
-                   'phrase': self.phrase or '',
-                   'scope': 'title' if self.scope_title else 'any',
-                   'authors': self.author or '',
-                   'pub': self.pub or '',
-                   'ylo': self.timeframe[0] or '',
-                   'yhi': self.timeframe[1] or '',
-                   'patents': '0' if self.include_patents else '1',
-                   'citations': '0' if self.include_citations else '1'}
+        ##Need to make this only add stuff if needed
+        urlargs = {'words': self.words or ''}
+                   #'words_some': words_some or '',
+                   #'words_none': words_none or '',
+                   #'phrase': self.phrase or '',
+                   #'scope': 'title' if self.scope_title else 'any',
+                   #'authors': self.author or '',
+                   #'pub': self.pub or '',
+                   #'ylo': self.timeframe[0] or '',
+                   #'yhi': self.timeframe[1] or '',
+                   #'patents': '0' if self.include_patents else '1',
+                   #'citations': '0' if self.include_citations else '1'}
 
         for key, val in urlargs.items():
             urlargs[key] = quote(encode(val))
